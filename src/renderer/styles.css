@@ -222,6 +222,19 @@ td.name {
   flex: 1;
 }
 
+.minimal table {
+  table-layout: auto;
+}
+
+.minimal thead {
+  display: none;
+}
+
+.minimal td.name {
+  width: 5em;
+  max-width: 5em;
+}
+
 .theme-gray {
   --bg: rgba(245, 246, 248, 0.9);
   --panel: rgba(20, 24, 31, 0.06);
