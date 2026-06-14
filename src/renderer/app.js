@@ -411,7 +411,7 @@ function startRowPress(event) {
     changed: false,
     startX: event.clientX,
     startY: event.clientY,
-    timer: setTimeout(() => beginRowDrag(row.dataset.symbol), 280)
+    timer: setTimeout(() => beginRowDrag(row.dataset.symbol), 160)
   };
 }
 
