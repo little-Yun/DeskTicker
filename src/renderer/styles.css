@@ -134,6 +134,28 @@ input:focus {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  scrollbar-color: rgba(148, 163, 184, 0.45) rgba(15, 18, 25, 0.35);
+  scrollbar-width: thin;
+}
+
+.table-wrap::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.table-wrap::-webkit-scrollbar-track {
+  background: rgba(15, 18, 25, 0.35);
+  border-left: 1px solid var(--line);
+}
+
+.table-wrap::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border: 2px solid rgba(15, 18, 25, 0.35);
+  border-radius: 999px;
+}
+
+.table-wrap::-webkit-scrollbar-thumb:hover {
+  background: rgba(190, 203, 222, 0.6);
 }
 
 table {
