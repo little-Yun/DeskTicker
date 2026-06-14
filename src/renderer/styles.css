@@ -116,14 +116,20 @@ input {
   height: 28px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--panel);
   color: var(--text);
   padding: 0 9px;
   outline: none;
 }
 
+input::placeholder {
+  color: var(--muted);
+  opacity: 0.78;
+}
+
 input:focus {
-  border-color: rgba(125, 170, 255, 0.7);
+  border-color: var(--muted);
+  background: var(--panel);
 }
 
 .number {
