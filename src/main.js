@@ -14,7 +14,7 @@ const DEFAULT_CONFIG = {
     { symbol: 'sh000688', name: '科创50' }
   ],
   window: {
-    width: 860,
+    width: 760,
     height: 300,
     x: undefined,
     y: undefined,
