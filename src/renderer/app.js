@@ -305,9 +305,12 @@ async function showAnalysis(symbol) {
   const quote = state.quotes.get(symbol) || {};
   const item = state.config.watchlist.find(stock => stock.symbol === symbol) || {};
   const name = item.alias || quote.name || item.name || symbol;
+  hideSuggestions();
   analysisSubtitle.textContent = `${name} ${symbol.replace(/^(sh|sz|bj)/, '')}`;
   analysisContent.innerHTML = '<p class="flat">正在读取最近一次评分原因...</p>';
+  document.body.classList.add('modal-open');
   analysisModal.hidden = false;
+  document.getElementById('analysisCloseBtn').focus();
 
   try {
     const analysis = await window.yinpan.getAnalysis(symbol);
@@ -320,6 +323,7 @@ async function showAnalysis(symbol) {
 
 function closeAnalysis() {
   state.analysisSymbol = null;
+  document.body.classList.remove('modal-open');
   analysisModal.hidden = true;
 }
 
