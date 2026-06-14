@@ -169,14 +169,15 @@ select:focus {
   justify-content: space-between;
   gap: 6px;
   padding: 0 9px;
-  border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--line);
+  background: var(--panel);
+  color: var(--text);
 }
 
 .refresh-select-button:hover,
 .refresh-select-button[aria-expanded="true"] {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(190, 203, 222, 0.36);
+  background: var(--panel);
+  border-color: var(--muted);
 }
 
 .refresh-select-arrow {
@@ -202,8 +203,8 @@ select:focus {
   padding: 4px;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: rgba(24, 29, 39, 0.98);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.36);
+  background: var(--bg);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
 }
 
 .refresh-select-menu[hidden] {
@@ -223,7 +224,7 @@ select:focus {
 
 .refresh-select-menu button:hover,
 .refresh-select-menu button[aria-selected="true"] {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--panel);
 }
 
 .suggestion-list {
