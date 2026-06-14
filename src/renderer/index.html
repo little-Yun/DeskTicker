@@ -30,12 +30,18 @@
           <div id="suggestionList" class="suggestion-list" hidden></div>
         </div>
         <button id="addBtn">添加</button>
-        <select id="refreshIntervalSelect" title="数据更新时间">
-          <option value="5000">5秒</option>
-          <option value="10000">10秒</option>
-          <option value="15000">15秒</option>
-          <option value="60000">1分钟</option>
-        </select>
+        <div class="refresh-select">
+          <button id="refreshIntervalButton" class="refresh-select-button" type="button" title="数据更新时间" aria-haspopup="listbox" aria-expanded="false">
+            <span id="refreshIntervalLabel">1分钟</span>
+            <span class="refresh-select-arrow">⌄</span>
+          </button>
+          <div id="refreshIntervalMenu" class="refresh-select-menu" role="listbox" hidden>
+            <button type="button" role="option" data-value="5000">5秒</button>
+            <button type="button" role="option" data-value="10000">10秒</button>
+            <button type="button" role="option" data-value="15000">15秒</button>
+            <button type="button" role="option" data-value="60000">1分钟</button>
+          </div>
+        </div>
         <span id="opacityText" class="hint"></span>
       </section>
 

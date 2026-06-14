@@ -16,7 +16,9 @@ const statusText = document.getElementById('statusText');
 const quoteRows = document.getElementById('quoteRows');
 const symbolInput = document.getElementById('symbolInput');
 const suggestionList = document.getElementById('suggestionList');
-const refreshIntervalSelect = document.getElementById('refreshIntervalSelect');
+const refreshIntervalButton = document.getElementById('refreshIntervalButton');
+const refreshIntervalLabel = document.getElementById('refreshIntervalLabel');
+const refreshIntervalMenu = document.getElementById('refreshIntervalMenu');
 const opacityText = document.getElementById('opacityText');
 const refreshHint = document.getElementById('refreshHint');
 const analysisModal = document.getElementById('analysisModal');
@@ -91,7 +93,8 @@ function render() {
   appEl.classList.toggle('privacy', Boolean(state.config.privacy.hidePnL || state.config.privacy.hidePosition));
   appEl.classList.toggle('minimal', Boolean(state.config.privacy.minimalMode));
   opacityText.textContent = `透明度 ${Math.round(state.config.window.opacity * 100)}%`;
-  refreshIntervalSelect.value = String(normalizeRefreshInterval(state.config.refreshIntervalMs));
+  refreshIntervalLabel.textContent = formatIntervalLabel(state.config.refreshIntervalMs);
+  syncRefreshMenu();
   refreshHint.textContent = `每 ${formatIntervalLabel(state.config.refreshIntervalMs)} 刷新行情、评分和分析。`;
   applyMinimalLayout();
 }
@@ -104,7 +107,7 @@ function normalizeRefreshInterval(value) {
 function formatIntervalLabel(value) {
   const interval = normalizeRefreshInterval(value);
   if (interval < 60000) return `${interval / 1000} 秒`;
-  return '1 分钟';
+  return '1分钟';
 }
 
 function applyMinimalLayout() {
@@ -293,11 +296,30 @@ function hideSuggestions() {
 }
 
 async function changeRefreshInterval() {
-  state.config.refreshIntervalMs = normalizeRefreshInterval(refreshIntervalSelect.value);
+  const selected = refreshIntervalMenu.querySelector('[aria-selected="true"]');
+  state.config.refreshIntervalMs = normalizeRefreshInterval(selected && selected.dataset.value);
   await saveConfig();
   scheduleRefresh();
   render();
   refreshQuotes(true);
+}
+
+function syncRefreshMenu() {
+  const current = String(normalizeRefreshInterval(state.config.refreshIntervalMs));
+  refreshIntervalMenu.querySelectorAll('[data-value]').forEach(button => {
+    button.setAttribute('aria-selected', String(button.dataset.value === current));
+  });
+}
+
+function toggleRefreshMenu() {
+  const open = refreshIntervalMenu.hidden;
+  refreshIntervalMenu.hidden = !open;
+  refreshIntervalButton.setAttribute('aria-expanded', String(open));
+}
+
+function closeRefreshMenu() {
+  refreshIntervalMenu.hidden = true;
+  refreshIntervalButton.setAttribute('aria-expanded', 'false');
 }
 
 async function showAnalysis(symbol) {
@@ -396,7 +418,20 @@ async function toggleMinimal() {
 function bindEvents() {
   document.getElementById('addBtn').addEventListener('click', addStock);
   document.getElementById('refreshBtn').addEventListener('click', () => refreshQuotes(true));
-  refreshIntervalSelect.addEventListener('change', changeRefreshInterval);
+  refreshIntervalButton.addEventListener('click', event => {
+    event.stopPropagation();
+    hideSuggestions();
+    toggleRefreshMenu();
+  });
+  refreshIntervalMenu.addEventListener('click', event => {
+    const item = event.target.closest('[data-value]');
+    if (!item) return;
+    refreshIntervalMenu.querySelectorAll('[data-value]').forEach(button => {
+      button.setAttribute('aria-selected', String(button === item));
+    });
+    closeRefreshMenu();
+    changeRefreshInterval();
+  });
   document.getElementById('themeBtn').addEventListener('click', cycleTheme);
   document.getElementById('minimalBtn').addEventListener('click', toggleMinimal);
   document.getElementById('hideBtn').addEventListener('click', () => window.yinpan.hideWindow());
@@ -407,6 +442,7 @@ function bindEvents() {
   });
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && !analysisModal.hidden) closeAnalysis();
+    if (event.key === 'Escape') closeRefreshMenu();
   });
   symbolInput.addEventListener('keydown', event => {
     if (event.key === 'Enter') addStock();
@@ -421,6 +457,7 @@ function bindEvents() {
   });
   document.addEventListener('click', event => {
     if (!event.target.closest('.symbol-box')) hideSuggestions();
+    if (!event.target.closest('.refresh-select')) closeRefreshMenu();
   });
   quoteRows.addEventListener('click', event => {
     const removeButton = event.target.closest('.remove');
