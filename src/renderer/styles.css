@@ -210,9 +210,16 @@ td.name {
 .minimal td:nth-child(7),
 .minimal th:nth-child(8),
 .minimal td:nth-child(8),
+.minimal th:last-child,
+.minimal td:last-child,
+.minimal .titlebar,
 .minimal .footer,
 .minimal .toolbar {
   display: none;
+}
+
+.minimal .table-wrap {
+  flex: 1;
 }
 
 .theme-gray {
