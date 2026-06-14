@@ -186,6 +186,11 @@ td:first-child {
   text-align: left;
 }
 
+th:nth-child(n + 2),
+td:nth-child(n + 2) {
+  text-align: center;
+}
+
 th:nth-child(7),
 td:nth-child(7),
 th:nth-child(9),
@@ -207,12 +212,12 @@ td.name {
 
 th:nth-child(1),
 td:nth-child(1) {
-  width: 15%;
+  width: 14%;
 }
 
 th:nth-child(2),
 td:nth-child(2) {
-  width: 11%;
+  width: 12%;
 }
 
 th:nth-child(3),
@@ -232,7 +237,7 @@ td:nth-child(5) {
 
 th:nth-child(6),
 td:nth-child(6) {
-  width: 8%;
+  width: 9%;
 }
 
 th:nth-child(7),
@@ -242,7 +247,7 @@ td:nth-child(7) {
 
 th:nth-child(8),
 td:nth-child(8) {
-  width: 15%;
+  width: 14%;
 }
 
 th:nth-child(9),
