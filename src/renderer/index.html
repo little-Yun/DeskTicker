@@ -25,7 +25,10 @@
       </header>
 
       <section class="toolbar">
-        <input id="symbolInput" placeholder="输入 600519 / sh600519 添加自选">
+        <div class="symbol-box">
+          <input id="symbolInput" autocomplete="off" placeholder="输入 600519 / sh600519 / 股票名称">
+          <div id="suggestionList" class="suggestion-list" hidden></div>
+        </div>
         <button id="addBtn">添加</button>
         <select id="refreshIntervalSelect" title="数据更新时间">
           <option value="5000">5秒</option>

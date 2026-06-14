@@ -262,6 +262,57 @@ function fetchQuotes(symbols) {
   });
 }
 
+function fetchStockSuggestions(keyword) {
+  const query = String(keyword || '').trim();
+  if (!query) return Promise.resolve([]);
+
+  const url = `https://smartbox.gtimg.cn/s3/?q=${encodeURIComponent(query)}&t=all&r=${Date.now()}`;
+  return new Promise((resolve, reject) => {
+    https.get(url, {
+      headers: {
+        'Referer': 'https://gu.qq.com/',
+        'User-Agent': 'Mozilla/5.0 YinPan/0.1'
+      }
+    }, response => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', chunk => {
+        body += chunk;
+      });
+      response.on('end', () => {
+        resolve(parseStockSuggestions(body));
+      });
+    }).on('error', reject);
+  });
+}
+
+function parseStockSuggestions(body) {
+  const match = String(body || '').match(/v_hint="([^"]*)"/);
+  if (!match) return [];
+
+  const decoded = decodeTencentEscapes(match[1]);
+  return decoded.split('^')
+    .map(item => {
+      const fields = item.split('~');
+      const market = String(fields[0] || '').toLowerCase();
+      const code = fields[1] || '';
+      const name = fields[2] || '';
+      const type = fields[4] || '';
+      const symbol = `${market}${code}`;
+      return { market, code, name, type, symbol };
+    })
+    .filter(item => /^(sh|sz|bj)\d{6}$/.test(item.symbol))
+    .slice(0, 8);
+}
+
+function decodeTencentEscapes(value) {
+  try {
+    return JSON.parse(`"${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\\\\u/g, '\\u')}"`);
+  } catch (error) {
+    return String(value).replace(/\\u([\da-f]{4})/gi, (_match, hex) => String.fromCharCode(parseInt(hex, 16)));
+  }
+}
+
 function parseTencentQuotes(body) {
   const quotes = [];
   const lines = String(body || '').split(/;\s*/);
@@ -539,6 +590,7 @@ app.whenReady().then(() => {
     return config;
   });
   ipcMain.handle('quotes:get', async (_event, symbols) => fetchQuotes(symbols));
+  ipcMain.handle('suggestions:get', async (_event, keyword) => fetchStockSuggestions(keyword));
   ipcMain.handle('analysis:get', (_event, symbol) => readAnalysisReason(symbol));
   ipcMain.handle('window:minimize-hide', () => {
     if (mainWindow) mainWindow.hide();

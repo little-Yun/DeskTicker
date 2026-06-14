@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('yinpan', {
   getConfig: () => ipcRenderer.invoke('config:get'),
   saveConfig: config => ipcRenderer.invoke('config:save', config),
   getQuotes: symbols => ipcRenderer.invoke('quotes:get', symbols),
+  getSuggestions: keyword => ipcRenderer.invoke('suggestions:get', keyword),
   getAnalysis: symbol => ipcRenderer.invoke('analysis:get', symbol),
   hideWindow: () => ipcRenderer.invoke('window:minimize-hide'),
   setMinimalLayout: payload => ipcRenderer.invoke('window:minimal-layout', payload),

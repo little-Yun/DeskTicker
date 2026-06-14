@@ -2,6 +2,9 @@ const state = {
   config: null,
   quotes: new Map(),
   timer: null,
+  suggestionTimer: null,
+  suggestions: [],
+  selectedSuggestion: null,
   refreshing: false,
   analysisSymbol: null,
   themeIndex: 0,
@@ -12,6 +15,7 @@ const appEl = document.getElementById('app');
 const statusText = document.getElementById('statusText');
 const quoteRows = document.getElementById('quoteRows');
 const symbolInput = document.getElementById('symbolInput');
+const suggestionList = document.getElementById('suggestionList');
 const refreshIntervalSelect = document.getElementById('refreshIntervalSelect');
 const opacityText = document.getElementById('opacityText');
 const refreshHint = document.getElementById('refreshHint');
@@ -27,6 +31,11 @@ function normalizeSymbol(input) {
   if (raw.startsWith('0') || raw.startsWith('1') || raw.startsWith('2') || raw.startsWith('3')) return `sz${raw}`;
   if (raw.startsWith('4') || raw.startsWith('8')) return `bj${raw}`;
   return null;
+}
+
+function suggestionLabel(item) {
+  if (!item) return '';
+  return `${item.name} ${item.code}`;
 }
 
 function formatNumber(value, digits = 2) {
@@ -146,9 +155,9 @@ async function saveConfig() {
 }
 
 async function addStock() {
-  const symbol = normalizeSymbol(symbolInput.value);
+  const symbol = await resolveInputSymbol();
   if (!symbol) {
-    statusText.textContent = '请输入 6 位代码，例如 600519';
+    statusText.textContent = '请输入 6 位代码或股票名称，例如 600519 / 上汽集团';
     symbolInput.focus();
     return;
   }
@@ -161,9 +170,75 @@ async function addStock() {
     name: symbol
   });
   symbolInput.value = '';
+  hideSuggestions();
   await saveConfig();
   render();
   refreshQuotes(true);
+}
+
+async function resolveInputSymbol() {
+  const directSymbol = normalizeSymbol(symbolInput.value);
+  if (directSymbol) return directSymbol;
+  if (state.selectedSuggestion && symbolInput.value.trim() === suggestionLabel(state.selectedSuggestion)) {
+    return state.selectedSuggestion.symbol;
+  }
+  if (state.suggestions.length > 0) return state.suggestions[0].symbol;
+
+  const suggestions = await window.yinpan.getSuggestions(symbolInput.value);
+  return suggestions.length > 0 ? suggestions[0].symbol : null;
+}
+
+function scheduleSuggestionSearch() {
+  clearTimeout(state.suggestionTimer);
+  state.selectedSuggestion = null;
+  const keyword = symbolInput.value.trim();
+  if (!keyword) {
+    hideSuggestions();
+    return;
+  }
+
+  state.suggestionTimer = setTimeout(() => searchSuggestions(keyword), 180);
+}
+
+async function searchSuggestions(keyword) {
+  try {
+    const suggestions = await window.yinpan.getSuggestions(keyword);
+    if (symbolInput.value.trim() !== keyword) return;
+    state.suggestions = suggestions;
+    renderSuggestions();
+  } catch (error) {
+    hideSuggestions();
+  }
+}
+
+function renderSuggestions() {
+  if (state.suggestions.length === 0) {
+    hideSuggestions();
+    return;
+  }
+
+  suggestionList.innerHTML = state.suggestions.map(item => `
+    <button class="suggestion-item" type="button" data-symbol="${item.symbol}">
+      <span class="suggestion-name">${escapeHtml(item.name)}</span>
+      <span class="suggestion-code">${escapeHtml(item.code)}</span>
+      <span class="suggestion-market">${escapeHtml(item.market.toUpperCase())}</span>
+    </button>
+  `).join('');
+  suggestionList.hidden = false;
+}
+
+function selectSuggestion(symbol) {
+  const suggestion = state.suggestions.find(item => item.symbol === symbol);
+  if (!suggestion) return;
+  state.selectedSuggestion = suggestion;
+  symbolInput.value = suggestionLabel(suggestion);
+  hideSuggestions();
+}
+
+function hideSuggestions() {
+  state.suggestions = [];
+  suggestionList.innerHTML = '';
+  suggestionList.hidden = true;
 }
 
 async function changeRefreshInterval() {
@@ -280,6 +355,17 @@ function bindEvents() {
   });
   symbolInput.addEventListener('keydown', event => {
     if (event.key === 'Enter') addStock();
+    if (event.key === 'Escape') hideSuggestions();
+  });
+  symbolInput.addEventListener('input', scheduleSuggestionSearch);
+  suggestionList.addEventListener('mousedown', event => {
+    const item = event.target.closest('.suggestion-item');
+    if (!item) return;
+    event.preventDefault();
+    selectSuggestion(item.dataset.symbol);
+  });
+  document.addEventListener('click', event => {
+    if (!event.target.closest('.symbol-box')) hideSuggestions();
   });
   quoteRows.addEventListener('click', event => {
     const removeButton = event.target.closest('.remove');
