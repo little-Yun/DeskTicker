@@ -187,16 +187,21 @@ function applyMinimalLayout(enabled, rowCount) {
   try {
     if (enabled) {
       normalWindowBounds = normalWindowBounds || bounds;
-      const height = Math.max(28, Math.min(800, Number(rowCount || 1) * 28 + 2));
+      const width = 336;
+      const height = Math.max(30, Math.min(800, Number(rowCount || 1) * 28 + 2));
+      mainWindow.setMinimumSize(260, 30);
       mainWindow.setBounds({
         x: bounds.x,
         y: bounds.y,
-        width: 400,
+        width,
         height
       });
     } else if (normalWindowBounds) {
+      mainWindow.setMinimumSize(520, 180);
       mainWindow.setBounds(normalWindowBounds);
       normalWindowBounds = null;
+    } else {
+      mainWindow.setMinimumSize(520, 180);
     }
   } finally {
     setTimeout(() => {
