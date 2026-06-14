@@ -86,7 +86,7 @@ function render() {
         <td class="${changeClass}">${formatNumber(quote.change)}</td>
         <td class="${changeClass}">${Number.isFinite(Number(quote.changePercent)) ? Number(quote.changePercent).toFixed(2) + '%' : '--'}</td>
         <td class="${scoreClass(quote.investmentScore)}">${quote.investmentScoreText || '--'}</td>
-        <td><button class="analysis-btn" data-symbol="${item.symbol}" title="查看分析">分析</button></td>
+        <td><button class="analysis-btn" data-symbol="${item.symbol}" title="查看AI分析">AI分析</button></td>
         <td>${quote.updatedAt || '--'}</td>
         <td><button class="remove" data-symbol="${item.symbol}" title="删除">×</button></td>
       </tr>
