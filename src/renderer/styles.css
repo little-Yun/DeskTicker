@@ -224,6 +224,7 @@ td.name {
 
 .minimal table {
   table-layout: auto;
+  width: auto;
 }
 
 .minimal thead {
@@ -231,9 +232,14 @@ td.name {
 }
 
 .minimal td.name {
-  width: calc(4em + 16px);
-  max-width: calc(4em + 16px);
+  width: calc(4em + 12px);
+  max-width: calc(4em + 12px);
   text-overflow: clip;
+}
+
+.minimal td {
+  height: 28px;
+  padding: 0 6px;
 }
 
 .theme-gray {

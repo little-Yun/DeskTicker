@@ -48,6 +48,8 @@ const DEFAULT_CONFIG = {
 
 let mainWindow;
 let config;
+let normalWindowBounds;
+let suppressBoundsPersist = false;
 
 function configPath() {
   return path.join(app.getPath('userData'), CONFIG_FILE);
@@ -126,7 +128,7 @@ function createWindow() {
 }
 
 function persistWindowBounds() {
-  if (!mainWindow) return;
+  if (!mainWindow || suppressBoundsPersist || config.privacy.minimalMode) return;
   const bounds = mainWindow.getBounds();
   config.window.width = bounds.width;
   config.window.height = bounds.height;
@@ -176,6 +178,31 @@ function dockWindow(side) {
   const y = display.workArea.y + display.workArea.height - bounds.height;
   mainWindow.setBounds({ ...bounds, x, y });
   persistWindowBounds();
+}
+
+function applyMinimalLayout(enabled, rowCount) {
+  if (!mainWindow) return;
+  const bounds = mainWindow.getBounds();
+  suppressBoundsPersist = true;
+  try {
+    if (enabled) {
+      normalWindowBounds = normalWindowBounds || bounds;
+      const height = Math.max(28, Math.min(800, Number(rowCount || 1) * 28 + 2));
+      mainWindow.setBounds({
+        x: bounds.x,
+        y: bounds.y,
+        width: 400,
+        height
+      });
+    } else if (normalWindowBounds) {
+      mainWindow.setBounds(normalWindowBounds);
+      normalWindowBounds = null;
+    }
+  } finally {
+    setTimeout(() => {
+      suppressBoundsPersist = false;
+    }, 100);
+  }
 }
 
 function sendToRenderer(channel, payload) {
@@ -290,6 +317,9 @@ app.whenReady().then(() => {
   ipcMain.handle('quotes:get', async (_event, symbols) => fetchQuotes(symbols));
   ipcMain.handle('window:minimize-hide', () => {
     if (mainWindow) mainWindow.hide();
+  });
+  ipcMain.handle('window:minimal-layout', (_event, payload) => {
+    applyMinimalLayout(Boolean(payload && payload.enabled), Number(payload && payload.rowCount));
   });
   ipcMain.handle('window:close', () => app.quit());
 

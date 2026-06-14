@@ -79,6 +79,14 @@ function render() {
   appEl.classList.toggle('privacy', Boolean(state.config.privacy.hidePnL || state.config.privacy.hidePosition));
   appEl.classList.toggle('minimal', Boolean(state.config.privacy.minimalMode));
   opacityText.textContent = `透明度 ${Math.round(state.config.window.opacity * 100)}%`;
+  applyMinimalLayout();
+}
+
+function applyMinimalLayout() {
+  window.yinpan.setMinimalLayout({
+    enabled: Boolean(state.config.privacy.minimalMode),
+    rowCount: state.config.watchlist.length || 1
+  });
 }
 
 function escapeHtml(value) {

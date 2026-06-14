@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('yinpan', {
   saveConfig: config => ipcRenderer.invoke('config:save', config),
   getQuotes: symbols => ipcRenderer.invoke('quotes:get', symbols),
   hideWindow: () => ipcRenderer.invoke('window:minimize-hide'),
+  setMinimalLayout: payload => ipcRenderer.invoke('window:minimal-layout', payload),
   closeApp: () => ipcRenderer.invoke('window:close'),
   onCycleTheme: callback => ipcRenderer.on('theme:cycle', callback),
   onTogglePrivacy: callback => ipcRenderer.on('privacy:toggle', callback),
