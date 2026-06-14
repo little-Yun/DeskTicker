@@ -38,6 +38,10 @@ function suggestionLabel(item) {
   return `${item.name} ${item.code}`;
 }
 
+function suggestionKey(item) {
+  return item && item.symbol ? item.symbol : '';
+}
+
 function formatNumber(value, digits = 2) {
   if (!Number.isFinite(Number(value)) || Number(value) === 0) return '--';
   return Number(value).toFixed(digits);
@@ -197,23 +201,65 @@ function scheduleSuggestionSearch() {
     return;
   }
 
+  const localSuggestions = findLocalSuggestions(keyword);
+  if (localSuggestions.length > 0) {
+    state.suggestions = localSuggestions;
+    renderSuggestions();
+  } else {
+    renderSuggestionMessage('正在查找股票...');
+  }
+
   state.suggestionTimer = setTimeout(() => searchSuggestions(keyword), 180);
 }
 
 async function searchSuggestions(keyword) {
   try {
-    const suggestions = await window.yinpan.getSuggestions(keyword);
+    const remoteSuggestions = await window.yinpan.getSuggestions(keyword);
     if (symbolInput.value.trim() !== keyword) return;
-    state.suggestions = suggestions;
+    state.suggestions = mergeSuggestions(findLocalSuggestions(keyword), remoteSuggestions);
     renderSuggestions();
   } catch (error) {
-    hideSuggestions();
+    if (state.suggestions.length === 0) renderSuggestionMessage('查找失败，请输入股票代码添加');
   }
+}
+
+function findLocalSuggestions(keyword) {
+  const text = String(keyword || '').trim().toLowerCase();
+  if (!text) return [];
+
+  return state.config.watchlist.map(item => {
+    const quote = state.quotes.get(item.symbol) || {};
+    const name = item.alias || quote.name || item.name || item.symbol;
+    const code = item.symbol.replace(/^(sh|sz|bj)/, '');
+    return {
+      symbol: item.symbol,
+      market: item.symbol.slice(0, 2),
+      code,
+      name,
+      type: 'LOCAL'
+    };
+  }).filter(item => {
+    return item.symbol.includes(text) || item.code.includes(text) || item.name.toLowerCase().includes(text);
+  }).slice(0, 8);
+}
+
+function mergeSuggestions(...groups) {
+  const seen = new Set();
+  const merged = [];
+  for (const group of groups) {
+    for (const item of group || []) {
+      const key = suggestionKey(item);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(item);
+    }
+  }
+  return merged.slice(0, 8);
 }
 
 function renderSuggestions() {
   if (state.suggestions.length === 0) {
-    hideSuggestions();
+    renderSuggestionMessage('没有匹配到股票');
     return;
   }
 
@@ -224,6 +270,11 @@ function renderSuggestions() {
       <span class="suggestion-market">${escapeHtml(item.market.toUpperCase())}</span>
     </button>
   `).join('');
+  suggestionList.hidden = false;
+}
+
+function renderSuggestionMessage(message) {
+  suggestionList.innerHTML = `<div class="suggestion-empty">${escapeHtml(message)}</div>`;
   suggestionList.hidden = false;
 }
 

@@ -104,6 +104,8 @@ button:hover {
 }
 
 .toolbar {
+  position: relative;
+  z-index: 30;
   display: grid;
   grid-template-columns: minmax(150px, 1fr) 54px 76px auto;
   gap: 8px;
@@ -154,7 +156,7 @@ select:focus {
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  z-index: 20;
+  z-index: 40;
   max-height: 190px;
   overflow: auto;
   border: 1px solid var(--line);
@@ -181,6 +183,14 @@ select:focus {
   background: rgba(148, 163, 184, 0.45);
   border: 2px solid rgba(15, 18, 25, 0.35);
   border-radius: 999px;
+}
+
+.suggestion-empty {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  padding: 0 9px;
+  color: var(--muted);
 }
 
 .suggestion-item {
