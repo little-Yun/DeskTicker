@@ -159,9 +159,9 @@ td:nth-child(2) {
 th {
   position: sticky;
   top: 0;
-  background: rgba(16, 20, 28, 0.96);
-  color: var(--muted);
-  font-weight: 500;
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 600;
 }
 
 td.name {
