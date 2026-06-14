@@ -1,0 +1,20 @@
+{
+  "name": "stock-watch-cn",
+  "productName": "隐盘",
+  "version": "0.1.0",
+  "description": "A lightweight Windows stock watcher for China's mainland markets.",
+  "main": "src/main.js",
+  "author": "Codex",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "package:win": "electron-packager . YinPan --platform=win32 --arch=x64 --overwrite --out=dist --ignore=\"^/dist$\" --ignore=\"^/node_modules/.cache$\""
+  },
+  "dependencies": {
+    "electron-log": "4.4.8"
+  },
+  "devDependencies": {
+    "electron": "22.3.27",
+    "electron-packager": "17.1.2"
+  }
+}
