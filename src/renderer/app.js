@@ -4,6 +4,7 @@ const state = {
   timer: null,
   suggestionTimer: null,
   suggestions: [],
+  activeSuggestionIndex: -1,
   selectedSuggestion: null,
   rowDrag: null,
   suppressNextRowClick: false,
@@ -200,6 +201,7 @@ async function resolveInputSymbol() {
 function scheduleSuggestionSearch() {
   clearTimeout(state.suggestionTimer);
   state.selectedSuggestion = null;
+  state.activeSuggestionIndex = -1;
   const keyword = symbolInput.value.trim();
   if (!keyword) {
     hideSuggestions();
@@ -269,7 +271,7 @@ function renderSuggestions() {
   }
 
   suggestionList.innerHTML = state.suggestions.map(item => `
-    <button class="suggestion-item" type="button" data-symbol="${item.symbol}">
+    <button class="suggestion-item" type="button" data-symbol="${item.symbol}" aria-selected="${String(state.suggestions.indexOf(item) === state.activeSuggestionIndex)}">
       <span class="suggestion-name">${escapeHtml(item.name)}</span>
       <span class="suggestion-code">${escapeHtml(item.code)}</span>
       <span class="suggestion-market">${escapeHtml(item.market.toUpperCase())}</span>
@@ -293,8 +295,28 @@ function selectSuggestion(symbol) {
 
 function hideSuggestions() {
   state.suggestions = [];
+  state.activeSuggestionIndex = -1;
   suggestionList.innerHTML = '';
   suggestionList.hidden = true;
+}
+
+function moveActiveSuggestion(delta) {
+  if (state.suggestions.length === 0) return;
+  const next = state.activeSuggestionIndex < 0
+    ? (delta > 0 ? 0 : state.suggestions.length - 1)
+    : (state.activeSuggestionIndex + delta + state.suggestions.length) % state.suggestions.length;
+  state.activeSuggestionIndex = next;
+  renderSuggestions();
+  const active = suggestionList.querySelector('[aria-selected="true"]');
+  if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function chooseActiveSuggestion() {
+  if (state.activeSuggestionIndex < 0) return false;
+  const suggestion = state.suggestions[state.activeSuggestionIndex];
+  if (!suggestion) return false;
+  selectSuggestion(suggestion.symbol);
+  return true;
 }
 
 async function changeRefreshInterval() {
@@ -517,7 +539,24 @@ function bindEvents() {
     if (event.key === 'Escape') closeRefreshMenu();
   });
   symbolInput.addEventListener('keydown', event => {
-    if (event.key === 'Enter') addStock();
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      moveActiveSuggestion(1);
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      moveActiveSuggestion(-1);
+      return;
+    }
+    if (event.key === 'Enter') {
+      if (chooseActiveSuggestion()) {
+        event.preventDefault();
+        addStock();
+        return;
+      }
+      addStock();
+    }
     if (event.key === 'Escape') hideSuggestions();
   });
   symbolInput.addEventListener('input', scheduleSuggestionSearch);

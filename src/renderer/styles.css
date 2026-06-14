@@ -282,8 +282,13 @@ select:focus {
   text-align: left;
 }
 
-.suggestion-item:hover {
+.suggestion-item:hover,
+.suggestion-item[aria-selected="true"] {
   background: rgba(255, 255, 255, 0.09);
+}
+
+.suggestion-item[aria-selected="true"] {
+  outline: 1px solid rgba(190, 203, 222, 0.28);
 }
 
 .suggestion-name {
