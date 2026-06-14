@@ -202,21 +202,27 @@ td.name {
 
 th:nth-child(1),
 td:nth-child(1) {
-  width: 100px;
+  width: 82px;
 }
 
 th:nth-child(2),
 td:nth-child(2) {
-  width: 76px;
+  width: 68px;
 }
 
 th:nth-child(3),
-td:nth-child(3),
+td:nth-child(3) {
+  width: 78px;
+}
+
 th:nth-child(4),
-td:nth-child(4),
+td:nth-child(4) {
+  width: 74px;
+}
+
 th:nth-child(5),
 td:nth-child(5) {
-  width: 88px;
+  width: 68px;
 }
 
 th:nth-child(6),
