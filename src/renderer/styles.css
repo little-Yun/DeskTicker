@@ -231,8 +231,9 @@ td.name {
 }
 
 .minimal td.name {
-  width: 5em;
-  max-width: 5em;
+  width: calc(4em + 16px);
+  max-width: calc(4em + 16px);
+  text-overflow: clip;
 }
 
 .theme-gray {
