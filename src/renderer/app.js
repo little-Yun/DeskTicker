@@ -175,7 +175,7 @@ async function addStock() {
     statusText.textContent = `${symbol} 已存在`;
     return;
   }
-  state.config.watchlist.push({
+  state.config.watchlist.unshift({
     symbol,
     name: symbol
   });
