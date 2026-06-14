@@ -5,6 +5,8 @@ const state = {
   suggestionTimer: null,
   suggestions: [],
   selectedSuggestion: null,
+  rowDrag: null,
+  suppressNextRowClick: false,
   refreshing: false,
   analysisSymbol: null,
   themeIndex: 0,
@@ -76,7 +78,7 @@ function render() {
     const price = quote.price || 0;
     const changeClass = trendClass(quote.change);
     return `
-      <tr>
+      <tr data-symbol="${item.symbol}" class="${state.rowDrag && state.rowDrag.symbol === item.symbol && state.rowDrag.active ? 'dragging-row' : ''}">
         <td class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</td>
         <td>${item.symbol.replace(/^(sh|sz|bj)/, '')}</td>
         <td class="${changeClass}">${formatRawNumber(quote.priceText ?? price)}</td>
@@ -395,6 +397,76 @@ async function removeStock(symbol) {
   render();
 }
 
+function startRowPress(event) {
+  if (event.button !== 0 || document.body.classList.contains('modal-open')) return;
+  if (event.target.closest('button, input, select, .refresh-select, .suggestion-list')) return;
+
+  const row = event.target.closest('tr[data-symbol]');
+  if (!row) return;
+
+  clearRowPress();
+  state.rowDrag = {
+    symbol: row.dataset.symbol,
+    active: false,
+    changed: false,
+    startX: event.clientX,
+    startY: event.clientY,
+    timer: setTimeout(() => beginRowDrag(row.dataset.symbol), 280)
+  };
+}
+
+function beginRowDrag(symbol) {
+  if (!state.rowDrag || state.rowDrag.symbol !== symbol) return;
+  state.rowDrag.active = true;
+  document.body.classList.add('row-dragging');
+  statusText.textContent = '拖动排序，松开保存';
+  render();
+}
+
+function moveRowDrag(event) {
+  if (!state.rowDrag) return;
+
+  if (!state.rowDrag.active) {
+    const moved = Math.hypot(event.clientX - state.rowDrag.startX, event.clientY - state.rowDrag.startY);
+    if (moved > 8) clearRowPress();
+    return;
+  }
+
+  event.preventDefault();
+  const targetRow = document.elementFromPoint(event.clientX, event.clientY)?.closest('tr[data-symbol]');
+  if (!targetRow || targetRow.dataset.symbol === state.rowDrag.symbol) return;
+  reorderWatchlist(state.rowDrag.symbol, targetRow.dataset.symbol);
+}
+
+function reorderWatchlist(sourceSymbol, targetSymbol) {
+  const sourceIndex = state.config.watchlist.findIndex(item => item.symbol === sourceSymbol);
+  const targetIndex = state.config.watchlist.findIndex(item => item.symbol === targetSymbol);
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return;
+
+  const [item] = state.config.watchlist.splice(sourceIndex, 1);
+  state.config.watchlist.splice(targetIndex, 0, item);
+  state.rowDrag.changed = true;
+  render();
+}
+
+async function finishRowDrag() {
+  if (!state.rowDrag) return;
+  const shouldSave = state.rowDrag.active && state.rowDrag.changed;
+  state.suppressNextRowClick = state.rowDrag.active;
+  clearRowPress();
+  render();
+  if (shouldSave) {
+    await saveConfig();
+    statusText.textContent = '排序已保存';
+  }
+}
+
+function clearRowPress() {
+  if (state.rowDrag && state.rowDrag.timer) clearTimeout(state.rowDrag.timer);
+  state.rowDrag = null;
+  document.body.classList.remove('row-dragging');
+}
+
 function cycleTheme() {
   state.themeIndex = (state.themeIndex + 1) % state.themes.length;
   document.body.classList.remove(...state.themes.filter(Boolean));
@@ -460,12 +532,22 @@ function bindEvents() {
     if (!event.target.closest('.refresh-select')) closeRefreshMenu();
   });
   quoteRows.addEventListener('click', event => {
+    if (state.suppressNextRowClick) {
+      state.suppressNextRowClick = false;
+      event.preventDefault();
+      return;
+    }
+    if (document.body.classList.contains('row-dragging')) return;
     const removeButton = event.target.closest('.remove');
     if (removeButton) removeStock(removeButton.dataset.symbol);
 
     const analysisButton = event.target.closest('.analysis-btn');
     if (analysisButton) showAnalysis(analysisButton.dataset.symbol);
   });
+  quoteRows.addEventListener('pointerdown', startRowPress);
+  document.addEventListener('pointermove', moveRowDrag);
+  document.addEventListener('pointerup', finishRowDrag);
+  document.addEventListener('pointercancel', clearRowPress);
 
   window.yinpan.onCycleTheme(cycleTheme);
   window.yinpan.onTogglePrivacy(togglePrivacy);

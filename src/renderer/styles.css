@@ -48,6 +48,11 @@ body.modal-open .app {
   user-select: none;
 }
 
+body.row-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
 .titlebar {
   height: 36px;
   display: flex;
@@ -371,6 +376,19 @@ th {
 
 td.name {
   font-weight: 600;
+}
+
+tbody tr[data-symbol] {
+  cursor: grab;
+}
+
+tbody tr.dragging-row {
+  background: rgba(255, 255, 255, 0.095);
+  outline: 1px solid rgba(190, 203, 222, 0.28);
+}
+
+body.row-dragging tbody tr[data-symbol] {
+  cursor: grabbing;
 }
 
 th:nth-child(1),
