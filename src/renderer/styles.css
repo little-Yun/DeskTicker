@@ -26,7 +26,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -104,22 +105,31 @@ button:hover {
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) 54px auto;
+  grid-template-columns: minmax(150px, 1fr) 54px 76px auto;
   gap: 8px;
   align-items: center;
   padding: 8px;
   border-bottom: 1px solid var(--line);
 }
 
-input {
+input,
+select {
   min-width: 0;
   height: 28px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--panel);
   color: var(--text);
-  padding: 0 9px;
   outline: none;
+}
+
+input {
+  padding: 0 9px;
+}
+
+select {
+  padding: 0 7px;
+  cursor: pointer;
 }
 
 input::placeholder {
@@ -127,7 +137,8 @@ input::placeholder {
   opacity: 0.78;
 }
 
-input:focus {
+input:focus,
+select:focus {
   border-color: var(--muted);
   background: var(--panel);
 }

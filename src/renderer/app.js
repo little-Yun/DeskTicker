@@ -12,7 +12,9 @@ const appEl = document.getElementById('app');
 const statusText = document.getElementById('statusText');
 const quoteRows = document.getElementById('quoteRows');
 const symbolInput = document.getElementById('symbolInput');
+const refreshIntervalSelect = document.getElementById('refreshIntervalSelect');
 const opacityText = document.getElementById('opacityText');
+const refreshHint = document.getElementById('refreshHint');
 const analysisModal = document.getElementById('analysisModal');
 const analysisSubtitle = document.getElementById('analysisSubtitle');
 const analysisContent = document.getElementById('analysisContent');
@@ -76,7 +78,20 @@ function render() {
   appEl.classList.toggle('privacy', Boolean(state.config.privacy.hidePnL || state.config.privacy.hidePosition));
   appEl.classList.toggle('minimal', Boolean(state.config.privacy.minimalMode));
   opacityText.textContent = `透明度 ${Math.round(state.config.window.opacity * 100)}%`;
+  refreshIntervalSelect.value = String(normalizeRefreshInterval(state.config.refreshIntervalMs));
+  refreshHint.textContent = `每 ${formatIntervalLabel(state.config.refreshIntervalMs)} 刷新行情、评分和分析。`;
   applyMinimalLayout();
+}
+
+function normalizeRefreshInterval(value) {
+  const interval = Number(value);
+  return [5000, 10000, 15000, 60000].includes(interval) ? interval : 60000;
+}
+
+function formatIntervalLabel(value) {
+  const interval = normalizeRefreshInterval(value);
+  if (interval < 60000) return `${interval / 1000} 秒`;
+  return '1 分钟';
 }
 
 function applyMinimalLayout() {
@@ -123,7 +138,7 @@ async function refreshQuotes(manual = false) {
 
 function scheduleRefresh() {
   if (state.timer) clearInterval(state.timer);
-  state.timer = setInterval(() => refreshQuotes(false), state.config.refreshIntervalMs || 60000);
+  state.timer = setInterval(() => refreshQuotes(false), normalizeRefreshInterval(state.config.refreshIntervalMs));
 }
 
 async function saveConfig() {
@@ -147,6 +162,14 @@ async function addStock() {
   });
   symbolInput.value = '';
   await saveConfig();
+  render();
+  refreshQuotes(true);
+}
+
+async function changeRefreshInterval() {
+  state.config.refreshIntervalMs = normalizeRefreshInterval(refreshIntervalSelect.value);
+  await saveConfig();
+  scheduleRefresh();
   render();
   refreshQuotes(true);
 }
@@ -243,6 +266,7 @@ async function toggleMinimal() {
 function bindEvents() {
   document.getElementById('addBtn').addEventListener('click', addStock);
   document.getElementById('refreshBtn').addEventListener('click', () => refreshQuotes(true));
+  refreshIntervalSelect.addEventListener('change', changeRefreshInterval);
   document.getElementById('themeBtn').addEventListener('click', cycleTheme);
   document.getElementById('minimalBtn').addEventListener('click', toggleMinimal);
   document.getElementById('hideBtn').addEventListener('click', () => window.yinpan.hideWindow());

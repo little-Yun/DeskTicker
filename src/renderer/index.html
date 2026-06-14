@@ -27,6 +27,12 @@
       <section class="toolbar">
         <input id="symbolInput" placeholder="输入 600519 / sh600519 添加自选">
         <button id="addBtn">添加</button>
+        <select id="refreshIntervalSelect" title="数据更新时间">
+          <option value="5000">5秒</option>
+          <option value="10000">10秒</option>
+          <option value="15000">15秒</option>
+          <option value="60000">1分钟</option>
+        </select>
         <span id="opacityText" class="hint"></span>
       </section>
 
@@ -50,7 +56,7 @@
       </section>
 
       <footer class="footer">
-        <span>默认每 60 秒刷新，隐藏窗口时暂停显示更新。</span>
+        <span id="refreshHint">默认每 60 秒刷新，隐藏窗口时暂停显示更新。</span>
         <span>快捷键：Ctrl+~ 隐藏 / Ctrl+Alt+C 颜色 / Ctrl+Alt+M 极简</span>
       </footer>
     </main>
