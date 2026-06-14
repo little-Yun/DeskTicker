@@ -3,6 +3,7 @@ const state = {
   quotes: new Map(),
   timer: null,
   refreshing: false,
+  analysisSymbol: null,
   themeIndex: 0,
   themes: ['', 'theme-international', 'theme-gray', 'theme-office']
 };
@@ -11,9 +12,10 @@ const appEl = document.getElementById('app');
 const statusText = document.getElementById('statusText');
 const quoteRows = document.getElementById('quoteRows');
 const symbolInput = document.getElementById('symbolInput');
-const costInput = document.getElementById('costInput');
-const quantityInput = document.getElementById('quantityInput');
 const opacityText = document.getElementById('opacityText');
+const analysisModal = document.getElementById('analysisModal');
+const analysisSubtitle = document.getElementById('analysisSubtitle');
+const analysisContent = document.getElementById('analysisContent');
 
 function normalizeSymbol(input) {
   const raw = String(input || '').trim().toLowerCase();
@@ -35,14 +37,6 @@ function formatRawNumber(value) {
   return String(value);
 }
 
-function formatAmount(value) {
-  if (!Number.isFinite(Number(value))) return '--';
-  const number = Number(value);
-  if (Math.abs(number) >= 100000000) return `${(number / 100000000).toFixed(2)}亿`;
-  if (Math.abs(number) >= 10000) return `${(number / 10000).toFixed(2)}万`;
-  return number.toFixed(2);
-}
-
 function trendClass(value) {
   const number = Number(value);
   if (number > 0) return 'up';
@@ -50,16 +44,20 @@ function trendClass(value) {
   return 'flat';
 }
 
+function scoreClass(score) {
+  const number = Number(score);
+  if (!Number.isFinite(number)) return 'flat';
+  if (number >= 60) return 'score-good';
+  if (number >= 45) return 'score-watch';
+  return 'score-risk';
+}
+
 function render() {
   const rows = state.config.watchlist.map(item => {
     const quote = state.quotes.get(item.symbol) || {};
     const name = item.alias || quote.name || item.name || item.symbol;
     const price = quote.price || 0;
-    const cost = Number(item.cost || 0);
-    const quantity = Number(item.quantity || 0);
-    const pnl = price && cost && quantity ? (price - cost) * quantity : 0;
     const changeClass = trendClass(quote.change);
-    const pnlClass = trendClass(pnl);
     return `
       <tr>
         <td class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</td>
@@ -67,15 +65,14 @@ function render() {
         <td class="${changeClass}">${formatRawNumber(quote.priceText ?? price)}</td>
         <td class="${changeClass}">${formatNumber(quote.change)}</td>
         <td class="${changeClass}">${Number.isFinite(Number(quote.changePercent)) ? Number(quote.changePercent).toFixed(2) + '%' : '--'}</td>
-        <td class="optional">${cost ? cost.toFixed(2) : '--'}</td>
-        <td class="optional">${quantity || '--'}</td>
-        <td class="optional pnl-col ${pnlClass}">${pnl ? formatAmount(pnl) : '--'}</td>
+        <td class="${scoreClass(quote.investmentScore)}">${quote.investmentScoreText || '--'}</td>
+        <td><button class="analysis-btn" data-symbol="${item.symbol}" title="查看分析">分析</button></td>
         <td>${quote.updatedAt || '--'}</td>
         <td><button class="remove" data-symbol="${item.symbol}" title="删除">×</button></td>
       </tr>
     `;
   }).join('');
-  quoteRows.innerHTML = rows || '<tr><td colspan="10" class="flat">暂无自选股，输入代码后添加。</td></tr>';
+  quoteRows.innerHTML = rows || '<tr><td colspan="9" class="flat">暂无自选股，输入代码后添加。</td></tr>';
   appEl.classList.toggle('privacy', Boolean(state.config.privacy.hidePnL || state.config.privacy.hidePosition));
   appEl.classList.toggle('minimal', Boolean(state.config.privacy.minimalMode));
   opacityText.textContent = `透明度 ${Math.round(state.config.window.opacity * 100)}%`;
@@ -118,6 +115,9 @@ async function refreshQuotes(manual = false) {
   } finally {
     state.refreshing = false;
     render();
+    if (state.analysisSymbol && !analysisModal.hidden) {
+      showAnalysis(state.analysisSymbol);
+    }
   }
 }
 
@@ -143,21 +143,79 @@ async function addStock() {
   }
   state.config.watchlist.push({
     symbol,
-    name: symbol,
-    cost: Number(costInput.value) || undefined,
-    quantity: Number(quantityInput.value) || undefined
+    name: symbol
   });
   symbolInput.value = '';
-  costInput.value = '';
-  quantityInput.value = '';
   await saveConfig();
   render();
   refreshQuotes(true);
 }
 
+async function showAnalysis(symbol) {
+  state.analysisSymbol = symbol;
+  const quote = state.quotes.get(symbol) || {};
+  const item = state.config.watchlist.find(stock => stock.symbol === symbol) || {};
+  const name = item.alias || quote.name || item.name || symbol;
+  analysisSubtitle.textContent = `${name} ${symbol.replace(/^(sh|sz|bj)/, '')}`;
+  analysisContent.innerHTML = '<p class="flat">正在读取最近一次评分原因...</p>';
+  analysisModal.hidden = false;
+
+  try {
+    const analysis = await window.yinpan.getAnalysis(symbol);
+    analysisContent.innerHTML = renderAnalysis(analysis);
+    analysisSubtitle.textContent = `${analysis.name || name} ${(analysis.code || symbol.replace(/^(sh|sz|bj)/, ''))}`;
+  } catch (error) {
+    analysisContent.innerHTML = `<p class="score-risk">分析读取失败：${escapeHtml(error.message || String(error))}</p>`;
+  }
+}
+
+function closeAnalysis() {
+  state.analysisSymbol = null;
+  analysisModal.hidden = true;
+}
+
+function renderAnalysis(analysis) {
+  const quote = analysis.quote || {};
+  return `
+    <h3>结论</h3>
+    <p><strong>${escapeHtml(analysis.title || '暂无分析结论')}</strong></p>
+    <p><strong>观点：</strong>${escapeHtml(analysis.stance || analysis.conclusion || '--')}</p>
+    <p><strong>置信度：</strong>${escapeHtml(analysis.confidence || '--')}</p>
+    <p><strong>更新时间：</strong>${escapeHtml(analysis.generatedAt || '--')}，行情时间：${escapeHtml(analysis.quoteTime || '--')}</p>
+    <p>${escapeHtml(analysis.conclusion || '')}</p>
+
+    <h3>关键行情</h3>
+    <p>现价：${escapeHtml(quote.price || '--')}，涨跌：${escapeHtml(quote.change || '--')}，涨幅：${escapeHtml(quote.changePercent || '--')}</p>
+    <p>昨收：${escapeHtml(quote.previousClose || '--')}，开盘：${escapeHtml(quote.open || '--')}，最高：${escapeHtml(quote.high || '--')}，最低：${escapeHtml(quote.low || '--')}</p>
+    <p>成交额：${escapeHtml(quote.amount || '--')}，成交量：${escapeHtml(quote.volume || '--')}</p>
+
+    <h3>关键依据</h3>
+    ${renderList(analysis.reasons)}
+
+    <h3>评分拆解</h3>
+    ${renderBreakdown(analysis.breakdown)}
+
+    <h3>后续监控</h3>
+    ${renderList(analysis.monitors)}
+  `;
+}
+
+function renderList(items) {
+  if (!Array.isArray(items) || items.length === 0) return '<p class="flat">暂无。</p>';
+  return items.map(item => `<p>${escapeHtml(item)}</p>`).join('');
+}
+
+function renderBreakdown(items) {
+  if (!Array.isArray(items) || items.length === 0) return '<p class="flat">暂无。</p>';
+  return items.map(item => `
+    <p><strong>${escapeHtml(item.label || '--')}：${escapeHtml(item.value || '--')}</strong><br>${escapeHtml(item.detail || '')}</p>
+  `).join('');
+}
+
 async function removeStock(symbol) {
   state.config.watchlist = state.config.watchlist.filter(item => item.symbol !== symbol);
   state.quotes.delete(symbol);
+  if (state.analysisSymbol === symbol) closeAnalysis();
   await saveConfig();
   render();
 }
@@ -186,16 +244,25 @@ function bindEvents() {
   document.getElementById('addBtn').addEventListener('click', addStock);
   document.getElementById('refreshBtn').addEventListener('click', () => refreshQuotes(true));
   document.getElementById('themeBtn').addEventListener('click', cycleTheme);
-  document.getElementById('privacyBtn').addEventListener('click', togglePrivacy);
   document.getElementById('minimalBtn').addEventListener('click', toggleMinimal);
   document.getElementById('hideBtn').addEventListener('click', () => window.yinpan.hideWindow());
   document.getElementById('closeBtn').addEventListener('click', () => window.yinpan.closeApp());
+  document.getElementById('analysisCloseBtn').addEventListener('click', closeAnalysis);
+  analysisModal.addEventListener('click', event => {
+    if (event.target === analysisModal) closeAnalysis();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !analysisModal.hidden) closeAnalysis();
+  });
   symbolInput.addEventListener('keydown', event => {
     if (event.key === 'Enter') addStock();
   });
   quoteRows.addEventListener('click', event => {
-    const button = event.target.closest('.remove');
-    if (button) removeStock(button.dataset.symbol);
+    const removeButton = event.target.closest('.remove');
+    if (removeButton) removeStock(removeButton.dataset.symbol);
+
+    const analysisButton = event.target.closest('.analysis-btn');
+    if (analysisButton) showAnalysis(analysisButton.dataset.symbol);
   });
 
   window.yinpan.onCycleTheme(cycleTheme);

@@ -18,7 +18,6 @@
         <div class="window-actions">
           <button id="refreshBtn" title="立即刷新">↻</button>
           <button id="themeBtn" title="切换颜色">色</button>
-          <button id="privacyBtn" title="隐藏持仓/盈亏">隐</button>
           <button id="minimalBtn" title="极简模式">简</button>
           <button id="hideBtn" class="icon-btn" title="隐藏窗口">−</button>
           <button id="closeBtn" title="退出">×</button>
@@ -27,8 +26,6 @@
 
       <section class="toolbar">
         <input id="symbolInput" placeholder="输入 600519 / sh600519 添加自选">
-        <input id="costInput" class="number" placeholder="成本">
-        <input id="quantityInput" class="number" placeholder="持仓">
         <button id="addBtn">添加</button>
         <span id="opacityText" class="hint"></span>
       </section>
@@ -42,9 +39,8 @@
               <th>现价</th>
               <th>涨跌</th>
               <th>涨幅</th>
-              <th class="optional">成本</th>
-              <th class="optional">持仓</th>
-              <th class="optional pnl-col">盈亏</th>
+              <th>评分</th>
+              <th>分析</th>
               <th>时间</th>
               <th></th>
             </tr>
@@ -55,9 +51,23 @@
 
       <footer class="footer">
         <span>默认每 60 秒刷新，隐藏窗口时暂停显示更新。</span>
-        <span>快捷键：Ctrl+~ 隐藏 / Ctrl+Alt+C 颜色 / Ctrl+Alt+H 隐私 / Ctrl+Alt+M 极简</span>
+        <span>快捷键：Ctrl+~ 隐藏 / Ctrl+Alt+C 颜色 / Ctrl+Alt+M 极简</span>
       </footer>
     </main>
+
+    <div id="analysisModal" class="modal-backdrop" hidden>
+      <section class="analysis-modal" role="dialog" aria-modal="true" aria-labelledby="analysisTitle">
+        <header class="modal-header">
+          <div>
+            <strong id="analysisTitle">股票分析</strong>
+            <span id="analysisSubtitle"></span>
+          </div>
+          <button id="analysisCloseBtn" title="关闭">×</button>
+        </header>
+        <div id="analysisContent" class="analysis-content"></div>
+      </section>
+    </div>
+
     <script src="./app.js"></script>
   </body>
 </html>

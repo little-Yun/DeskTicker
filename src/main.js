@@ -55,6 +55,18 @@ function configPath() {
   return path.join(app.getPath('userData'), CONFIG_FILE);
 }
 
+function reasonDirPath() {
+  const devRuntimeDir = path.join(app.getAppPath(), 'YinPan-win32-x64');
+  const runtimeDir = app.isPackaged ? path.dirname(process.execPath) : devRuntimeDir;
+  return path.join(runtimeDir, 'reason');
+}
+
+function reasonFilePath(symbol) {
+  const normalized = normalizeSymbol(symbol);
+  if (!normalized) return null;
+  return path.join(reasonDirPath(), `${normalized}.json`);
+}
+
 function readConfig() {
   try {
     const saved = JSON.parse(fs.readFileSync(configPath(), 'utf8'));
@@ -270,7 +282,17 @@ function parseTencentQuotes(body) {
     const change = price && previousClose ? price - previousClose : toNumber(fields[31]);
     const changePercent = price && previousClose ? change / previousClose * 100 : toNumber(fields[32]);
     const updatedAt = formatQuoteTime(fields[30]);
-    quotes.push({
+    const investmentScore = calculateInvestmentScore({
+      price,
+      previousClose,
+      open,
+      high,
+      low,
+      changePercent,
+      amount,
+      volume
+    });
+    const quote = {
       symbol,
       name,
       priceText,
@@ -283,11 +305,208 @@ function parseTencentQuotes(body) {
       changePercent,
       amount,
       volume,
+      investmentScore,
+      investmentScoreText: Number.isFinite(investmentScore) ? String(investmentScore) : '--',
       updatedAt,
       stale: false
-    });
+    };
+    saveAnalysisReason(quote);
+    quotes.push(quote);
   }
   return quotes;
+}
+
+function calculateInvestmentScore(quote) {
+  const price = Number(quote.price);
+  const previousClose = Number(quote.previousClose);
+  const open = Number(quote.open);
+  const high = Number(quote.high);
+  const low = Number(quote.low);
+  const changePercent = Number(quote.changePercent);
+  const amount = Number(quote.amount);
+  const volume = Number(quote.volume);
+
+  if (!price || !previousClose) return null;
+
+  let score = 50;
+  score += clamp(changePercent * 2.2, -22, 18);
+
+  if (open > 0) {
+    const openMove = (price - open) / open * 100;
+    score += clamp(openMove * 1.8, -9, 9);
+  }
+
+  if (high > low) {
+    const rangePosition = (price - low) / (high - low);
+    score += clamp((rangePosition - 0.5) * 14, -7, 7);
+  }
+
+  if (high > 0 && low > 0 && previousClose > 0) {
+    const intradayRange = (high - low) / previousClose * 100;
+    if (intradayRange > 7 && changePercent < 0) score -= 5;
+    if (intradayRange > 7 && changePercent > 0) score += 3;
+  }
+
+  if (amount >= 100000000 || volume >= 1000000) {
+    score += changePercent >= 0 ? 3 : -3;
+  }
+
+  return Math.round(clamp(score, 0, 100));
+}
+
+function clamp(value, min, max) {
+  if (!Number.isFinite(Number(value))) return 0;
+  return Math.max(min, Math.min(max, Number(value)));
+}
+
+function saveAnalysisReason(quote) {
+  const filePath = reasonFilePath(quote.symbol);
+  if (!filePath) return;
+
+  try {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(buildAnalysisReason(quote), null, 2), 'utf8');
+  } catch (error) {
+    log.warn(`Failed to save analysis reason for ${quote.symbol}: ${error.message}`);
+  }
+}
+
+function readAnalysisReason(symbol) {
+  const filePath = reasonFilePath(symbol);
+  if (!filePath || !fs.existsSync(filePath)) {
+    return {
+      symbol: normalizeSymbol(symbol) || String(symbol || ''),
+      title: '暂无分析结论',
+      generatedAt: '',
+      conclusion: '还没有保存过该股票的评分原因。等待下一次行情刷新后会自动生成。',
+      reasons: [],
+      breakdown: [],
+      monitors: []
+    };
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (error) {
+    return {
+      symbol: normalizeSymbol(symbol) || String(symbol || ''),
+      title: '分析读取失败',
+      generatedAt: '',
+      conclusion: `评分原因文件无法读取：${error.message}`,
+      reasons: [],
+      breakdown: [],
+      monitors: []
+    };
+  }
+}
+
+function buildAnalysisReason(quote) {
+  const score = Number(quote.investmentScore);
+  const price = Number(quote.price);
+  const previousClose = Number(quote.previousClose);
+  const open = Number(quote.open);
+  const high = Number(quote.high);
+  const low = Number(quote.low);
+  const change = Number(quote.change);
+  const changePercent = Number(quote.changePercent);
+  const amount = Number(quote.amount);
+  const volume = Number(quote.volume);
+  const openMove = open > 0 ? (price - open) / open * 100 : 0;
+  const rangePosition = high > low ? (price - low) / (high - low) : null;
+  const stance = scoreToStance(score);
+  const confidence = price && previousClose && high && low ? '中等' : '偏低';
+  const generatedAt = new Date().toLocaleString('zh-CN', { hour12: false });
+
+  return {
+    symbol: quote.symbol,
+    code: quote.symbol.replace(/^(sh|sz|bj)/, ''),
+    name: quote.name,
+    score,
+    stance,
+    confidence,
+    generatedAt,
+    quoteTime: quote.updatedAt,
+    title: `${quote.name} ${quote.symbol.toUpperCase()}：${Number.isFinite(score) ? score : '--'}/100`,
+    conclusion: `${stance}。该结论基于最近一次行情刷新生成，主要反映分钟级交易面强弱，不构成个性化投资建议。`,
+    quote: {
+      price: formatMetric(price, 2),
+      change: formatMetric(change, 2),
+      changePercent: `${formatMetric(changePercent, 2)}%`,
+      previousClose: formatMetric(previousClose, 2),
+      open: formatMetric(open, 2),
+      high: formatMetric(high, 2),
+      low: formatMetric(low, 2),
+      amount: formatAmount(amount),
+      volume: formatVolume(volume)
+    },
+    reasons: [
+      `交易面：现价 ${formatMetric(price, 2)}，涨跌 ${formatMetric(change, 2)}，涨幅 ${formatMetric(changePercent, 2)}%。`,
+      open > 0
+        ? `日内表现：相对开盘价 ${formatSigned(openMove)}%，${openMove >= 0 ? '盘中承接偏积极' : '盘中承接偏弱'}。`
+        : '日内表现：开盘价数据不足，暂不纳入判断。',
+      rangePosition === null
+        ? '区间位置：日内高低点数据不足，暂不纳入判断。'
+        : `区间位置：价格位于日内区间约 ${(rangePosition * 100).toFixed(0)}% 分位，${rangePosition >= 0.66 ? '接近高位' : rangePosition <= 0.33 ? '接近低位' : '处于中部'}。`,
+      `成交活跃度：成交额约 ${formatAmount(amount)}，成交量约 ${formatVolume(volume)}，${amount >= 100000000 || volume >= 1000000 ? '活跃度较高' : '活跃度一般'}。`
+    ],
+    breakdown: [
+      {
+        label: '交易与动量',
+        value: `${score}/100`,
+        detail: `涨幅、开盘后表现、日内区间位置和成交活跃度共同决定本次评分。`
+      },
+      {
+        label: '基本面与估值',
+        value: '未接入实时基本面',
+        detail: '当前桌面小窗只使用分钟级行情接口；基本面、公告和舆情需要接入额外数据源后再纳入自动更新。'
+      },
+      {
+        label: '风险与不确定性',
+        value: confidence,
+        detail: '评分会随每分钟行情刷新变化，短线波动较大时需要降低结论权重。'
+      }
+    ],
+    monitors: [
+      `上调信号：涨幅扩大、价格靠近日内高位且成交继续放大。`,
+      `下调信号：价格跌回日内低位、涨幅转弱或放量下跌。`,
+      `复核节奏：每 ${Math.round((config && config.refreshIntervalMs ? config.refreshIntervalMs : 60000) / 1000)} 秒随行情刷新自动更新一次评分原因。`
+    ]
+  };
+}
+
+function scoreToStance(score) {
+  if (!Number.isFinite(Number(score))) return '观望，数据不足';
+  if (score >= 75) return '偏强，可继续关注';
+  if (score >= 60) return '中性偏强，可谨慎持有';
+  if (score >= 45) return '中性观望，等待确认';
+  if (score >= 30) return '偏弱，谨慎持有或降低仓位';
+  return '弱势，优先控制风险';
+}
+
+function formatMetric(value, digits = 2) {
+  return Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : '--';
+}
+
+function formatSigned(value) {
+  if (!Number.isFinite(Number(value))) return '--';
+  const number = Number(value);
+  return `${number >= 0 ? '+' : ''}${number.toFixed(2)}`;
+}
+
+function formatAmount(value) {
+  if (!Number.isFinite(Number(value)) || Number(value) === 0) return '--';
+  const number = Number(value);
+  if (Math.abs(number) >= 100000000) return `${(number / 100000000).toFixed(2)}亿`;
+  if (Math.abs(number) >= 10000) return `${(number / 10000).toFixed(2)}万`;
+  return number.toFixed(2);
+}
+
+function formatVolume(value) {
+  if (!Number.isFinite(Number(value)) || Number(value) === 0) return '--';
+  const number = Number(value);
+  if (Math.abs(number) >= 100000000) return `${(number / 100000000).toFixed(2)}亿`;
+  if (Math.abs(number) >= 10000) return `${(number / 10000).toFixed(2)}万`;
+  return String(Math.round(number));
 }
 
 function toNumber(value) {
@@ -320,6 +539,7 @@ app.whenReady().then(() => {
     return config;
   });
   ipcMain.handle('quotes:get', async (_event, symbols) => fetchQuotes(symbols));
+  ipcMain.handle('analysis:get', (_event, symbol) => readAnalysisReason(symbol));
   ipcMain.handle('window:minimize-hide', () => {
     if (mainWindow) mainWindow.hide();
   });
