@@ -232,14 +232,14 @@ td.name {
 }
 
 .minimal td.name {
-  width: calc(4em + 12px);
-  max-width: calc(4em + 12px);
+  width: calc(4em + 8px);
+  max-width: calc(4em + 8px);
   text-overflow: clip;
 }
 
 .minimal td {
   height: 28px;
-  padding: 0 6px;
+  padding: 0 4px;
 }
 
 .theme-gray {

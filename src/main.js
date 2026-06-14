@@ -187,7 +187,7 @@ function applyMinimalLayout(enabled, rowCount) {
   try {
     if (enabled) {
       normalWindowBounds = normalWindowBounds || bounds;
-      const width = 336;
+      const width = 304;
       const height = Math.max(30, Math.min(800, Number(rowCount || 1) * 28 + 2));
       mainWindow.setMinimumSize(260, 30);
       mainWindow.setBounds({
