@@ -173,7 +173,7 @@ table {
 th,
 td {
   height: 29px;
-  padding: 0 8px;
+  padding: 0 5px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.075);
   white-space: nowrap;
   overflow: hidden;
@@ -198,6 +198,46 @@ th {
 
 td.name {
   font-weight: 600;
+}
+
+th:nth-child(1),
+td:nth-child(1) {
+  width: 100px;
+}
+
+th:nth-child(2),
+td:nth-child(2) {
+  width: 76px;
+}
+
+th:nth-child(3),
+td:nth-child(3),
+th:nth-child(4),
+td:nth-child(4),
+th:nth-child(5),
+td:nth-child(5) {
+  width: 88px;
+}
+
+th:nth-child(6),
+td:nth-child(6) {
+  width: 60px;
+}
+
+th:nth-child(7),
+td:nth-child(7) {
+  width: 62px;
+}
+
+th:nth-child(8),
+td:nth-child(8) {
+  width: 76px;
+}
+
+th:nth-child(9),
+td:nth-child(9) {
+  width: 32px;
+  padding-right: 6px;
 }
 
 .up {
@@ -237,8 +277,8 @@ td.name {
 
 .analysis-btn {
   width: auto;
-  min-width: 42px;
-  padding: 0 8px;
+  min-width: 38px;
+  padding: 0 6px;
 }
 
 .footer {
