@@ -30,6 +30,11 @@ function formatNumber(value, digits = 2) {
   return Number(value).toFixed(digits);
 }
 
+function formatRawNumber(value) {
+  if (value === undefined || value === null || value === '' || Number(value) === 0) return '--';
+  return String(value);
+}
+
 function formatAmount(value) {
   if (!Number.isFinite(Number(value))) return '--';
   const number = Number(value);
@@ -59,7 +64,7 @@ function render() {
       <tr>
         <td class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</td>
         <td>${item.symbol.replace(/^(sh|sz|bj)/, '')}</td>
-        <td class="${changeClass}">${formatNumber(price)}</td>
+        <td class="${changeClass}">${formatRawNumber(quote.priceText ?? price)}</td>
         <td class="${changeClass}">${formatNumber(quote.change)}</td>
         <td class="${changeClass}">${Number.isFinite(Number(quote.changePercent)) ? Number(quote.changePercent).toFixed(2) + '%' : '--'}</td>
         <td class="optional">${cost ? cost.toFixed(2) : '--'}</td>

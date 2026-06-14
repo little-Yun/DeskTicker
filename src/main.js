@@ -227,6 +227,7 @@ function parseTencentQuotes(body) {
     const symbol = match[1].toLowerCase();
     const fields = match[2].split('~');
     const name = fields[1] || symbol;
+    const priceText = fields[3] || '';
     const price = toNumber(fields[3]);
     const previousClose = toNumber(fields[4]);
     const open = toNumber(fields[5]);
@@ -240,6 +241,7 @@ function parseTencentQuotes(body) {
     quotes.push({
       symbol,
       name,
+      priceText,
       price,
       previousClose,
       open,
