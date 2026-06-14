@@ -183,8 +183,7 @@ td {
 
 th:first-child,
 td:first-child,
-th:nth-child(2),
-td:nth-child(2) {
+th:nth-child(2) {
   text-align: left;
 }
 
@@ -207,12 +206,12 @@ td:nth-child(1) {
 
 th:nth-child(2),
 td:nth-child(2) {
-  width: 68px;
+  width: 58px;
 }
 
 th:nth-child(3),
 td:nth-child(3) {
-  width: 78px;
+  width: 70px;
 }
 
 th:nth-child(4),
