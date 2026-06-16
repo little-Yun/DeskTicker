@@ -22,7 +22,7 @@
 | `Ctrl + ]` | 提高透明度 |
 | `Ctrl + Alt + C` | 切换颜色主题 |
 | `Ctrl + Alt + H` | 隐藏持仓 / 盈亏 |
-| `Ctrl + Alt + M` | 极简模式 |
+| `Ctrl + Alt + N` | 极简模式 |
 | `Ctrl + Alt + Left` | 贴到屏幕左下 |
 | `Ctrl + Alt + Right` | 贴到屏幕右下 |
 | `Ctrl + Alt + Q` | 退出 |

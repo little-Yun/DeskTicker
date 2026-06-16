@@ -4,6 +4,16 @@
   --line: rgba(255, 255, 255, 0.12);
   --text: #dce4f2;
   --muted: #8f9bb0;
+  --scrollbar-track: rgba(15, 18, 25, 0.35);
+  --scrollbar-thumb: rgba(143, 155, 176, 0.48);
+  --scrollbar-thumb-hover: rgba(220, 228, 242, 0.62);
+  --dropdown-bg: rgba(16, 20, 28, 0.97);
+  --dropdown-hover: rgba(255, 255, 255, 0.09);
+  --dropdown-outline: rgba(190, 203, 222, 0.28);
+  --dropdown-shadow: rgba(0, 0, 0, 0.36);
+  --modal-backdrop: rgba(2, 6, 14, 0.34);
+  --modal-bg: rgba(16, 20, 28, 0.9);
+  --modal-shadow: rgba(0, 0, 0, 0.42);
   --up: #ff4d4f;
   --down: #1fbe72;
   --flat: #b7c0cf;
@@ -237,9 +247,9 @@ select:focus {
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: rgba(24, 29, 39, 0.98);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.36);
-  scrollbar-color: rgba(148, 163, 184, 0.45) rgba(15, 18, 25, 0.35);
+  background: var(--dropdown-bg);
+  box-shadow: 0 14px 34px var(--dropdown-shadow);
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   scrollbar-width: thin;
 }
 
@@ -252,12 +262,12 @@ select:focus {
 }
 
 .suggestion-list::-webkit-scrollbar-track {
-  background: rgba(15, 18, 25, 0.35);
+  background: var(--scrollbar-track);
 }
 
 .suggestion-list::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.45);
-  border: 2px solid rgba(15, 18, 25, 0.35);
+  background: var(--scrollbar-thumb);
+  border: 2px solid var(--scrollbar-track);
   border-radius: 999px;
 }
 
@@ -285,11 +295,11 @@ select:focus {
 
 .suggestion-item:hover,
 .suggestion-item[aria-selected="true"] {
-  background: rgba(255, 255, 255, 0.09);
+  background: var(--dropdown-hover);
 }
 
 .suggestion-item[aria-selected="true"] {
-  outline: 1px solid rgba(190, 203, 222, 0.28);
+  outline: 1px solid var(--dropdown-outline);
 }
 
 .suggestion-name {
@@ -314,7 +324,7 @@ select:focus {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  scrollbar-color: rgba(148, 163, 184, 0.45) rgba(15, 18, 25, 0.35);
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   scrollbar-width: thin;
 }
 
@@ -324,18 +334,18 @@ select:focus {
 }
 
 .table-wrap::-webkit-scrollbar-track {
-  background: rgba(15, 18, 25, 0.35);
+  background: var(--scrollbar-track);
   border-left: 1px solid var(--line);
 }
 
 .table-wrap::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.45);
-  border: 2px solid rgba(15, 18, 25, 0.35);
+  background: var(--scrollbar-thumb);
+  border: 2px solid var(--scrollbar-track);
   border-radius: 999px;
 }
 
 .table-wrap::-webkit-scrollbar-thumb:hover {
-  background: rgba(190, 203, 222, 0.6);
+  background: var(--scrollbar-thumb-hover);
 }
 
 table {
@@ -509,6 +519,12 @@ td:nth-child(9) {
 
 .minimal .table-wrap {
   flex: 1;
+  overflow: hidden;
+  scrollbar-width: none;
+}
+
+.minimal .table-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 .minimal table {
@@ -539,7 +555,7 @@ td:nth-child(9) {
   align-items: center;
   justify-content: center;
   padding: 18px;
-  background: rgba(2, 6, 14, 0.56);
+  background: var(--modal-backdrop);
 }
 
 .modal-backdrop[hidden] {
@@ -553,8 +569,8 @@ td:nth-child(9) {
   flex-direction: column;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(16, 20, 28, 0.98);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+  background: var(--modal-bg);
+  box-shadow: 0 24px 70px var(--modal-shadow);
   overflow: hidden;
 }
 
@@ -584,7 +600,7 @@ td:nth-child(9) {
   padding: 12px 16px 16px;
   line-height: 1.65;
   color: var(--text);
-  scrollbar-color: rgba(148, 163, 184, 0.45) rgba(15, 18, 25, 0.35);
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   scrollbar-width: thin;
 }
 
@@ -593,18 +609,18 @@ td:nth-child(9) {
 }
 
 .analysis-content::-webkit-scrollbar-track {
-  background: rgba(15, 18, 25, 0.35);
+  background: var(--scrollbar-track);
   border-left: 1px solid var(--line);
 }
 
 .analysis-content::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.45);
-  border: 2px solid rgba(15, 18, 25, 0.35);
+  background: var(--scrollbar-thumb);
+  border: 2px solid var(--scrollbar-track);
   border-radius: 999px;
 }
 
 .analysis-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(190, 203, 222, 0.6);
+  background: var(--scrollbar-thumb-hover);
 }
 
 .analysis-content h3 {
@@ -635,6 +651,16 @@ td:nth-child(9) {
   --line: rgba(20, 24, 31, 0.14);
   --text: #202631;
   --muted: #657084;
+  --scrollbar-track: rgba(20, 24, 31, 0.08);
+  --scrollbar-thumb: rgba(84, 91, 102, 0.38);
+  --scrollbar-thumb-hover: rgba(84, 91, 102, 0.58);
+  --dropdown-bg: rgba(245, 246, 248, 0.98);
+  --dropdown-hover: rgba(20, 24, 31, 0.08);
+  --dropdown-outline: rgba(20, 24, 31, 0.18);
+  --dropdown-shadow: rgba(20, 24, 31, 0.16);
+  --modal-backdrop: rgba(20, 24, 31, 0.18);
+  --modal-bg: rgba(245, 246, 248, 0.94);
+  --modal-shadow: rgba(20, 24, 31, 0.2);
   --up: #545b66;
   --down: #545b66;
   --flat: #545b66;
@@ -651,6 +677,16 @@ td:nth-child(9) {
   --line: rgba(40, 79, 140, 0.16);
   --text: #1d2430;
   --muted: #667085;
+  --scrollbar-track: rgba(40, 79, 140, 0.08);
+  --scrollbar-thumb: rgba(102, 112, 133, 0.42);
+  --scrollbar-thumb-hover: rgba(40, 79, 140, 0.55);
+  --dropdown-bg: rgba(250, 252, 255, 0.98);
+  --dropdown-hover: rgba(40, 79, 140, 0.08);
+  --dropdown-outline: rgba(40, 79, 140, 0.18);
+  --dropdown-shadow: rgba(40, 79, 140, 0.16);
+  --modal-backdrop: rgba(40, 79, 140, 0.16);
+  --modal-bg: rgba(250, 252, 255, 0.94);
+  --modal-shadow: rgba(40, 79, 140, 0.2);
   --up: #d93025;
   --down: #188038;
   --flat: #4b5563;

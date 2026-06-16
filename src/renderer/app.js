@@ -373,6 +373,12 @@ function closeAnalysis() {
   analysisModal.hidden = true;
 }
 
+async function adjustWindowOpacity(delta) {
+  const opacity = await window.yinpan.adjustOpacity(delta);
+  state.config.window.opacity = opacity;
+  render();
+}
+
 function renderAnalysis(analysis) {
   const quote = analysis.quote || {};
   return `
@@ -535,6 +541,18 @@ function bindEvents() {
     if (event.target === analysisModal) closeAnalysis();
   });
   document.addEventListener('keydown', event => {
+    if (!analysisModal.hidden && event.ctrlKey && !event.altKey && !event.shiftKey) {
+      if (event.key === '[' || event.code === 'BracketLeft') {
+        event.preventDefault();
+        adjustWindowOpacity(-0.08);
+        return;
+      }
+      if (event.key === ']' || event.code === 'BracketRight') {
+        event.preventDefault();
+        adjustWindowOpacity(0.08);
+        return;
+      }
+    }
     if (event.key === 'Escape' && !analysisModal.hidden) closeAnalysis();
     if (event.key === 'Escape') closeRefreshMenu();
   });
@@ -591,6 +609,10 @@ function bindEvents() {
   window.yinpan.onCycleTheme(cycleTheme);
   window.yinpan.onTogglePrivacy(togglePrivacy);
   window.yinpan.onToggleMinimal(toggleMinimal);
+  window.yinpan.onConfigUpdated(config => {
+    state.config = config;
+    render();
+  });
   window.yinpan.onOpacity(opacity => {
     state.config.window.opacity = opacity;
     render();

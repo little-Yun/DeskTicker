@@ -5,6 +5,8 @@ const path = require('path');
 const log = require('electron-log');
 
 const CONFIG_FILE = 'config.json';
+const NORMAL_MIN_WIDTH = 520;
+const NORMAL_MIN_HEIGHT = 180;
 const DEFAULT_CONFIG = {
   refreshIntervalMs: 60000,
   watchlist: [
@@ -39,7 +41,7 @@ const DEFAULT_CONFIG = {
     opacityUp: 'Control+]',
     cycleTheme: 'Control+Alt+C',
     privacyMode: 'Control+Alt+H',
-    minimalMode: 'Control+Alt+M',
+    minimalMode: 'Control+Alt+N',
     dockLeft: 'Control+Alt+Left',
     dockRight: 'Control+Alt+Right',
     quit: 'Control+Alt+Q'
@@ -49,6 +51,7 @@ const DEFAULT_CONFIG = {
 let mainWindow;
 let config;
 let normalWindowBounds;
+let minimalLayoutApplied = false;
 let suppressBoundsPersist = false;
 
 function configPath() {
@@ -70,10 +73,17 @@ function reasonFilePath(symbol) {
 function readConfig() {
   try {
     const saved = JSON.parse(fs.readFileSync(configPath(), 'utf8'));
-    return mergeConfig(DEFAULT_CONFIG, saved);
+    return migrateConfig(mergeConfig(DEFAULT_CONFIG, saved));
   } catch (error) {
-    return { ...DEFAULT_CONFIG };
+    return migrateConfig({ ...DEFAULT_CONFIG });
   }
+}
+
+function migrateConfig(nextConfig) {
+  if (nextConfig.hotkeys && nextConfig.hotkeys.minimalMode === 'Control+Alt+M') {
+    nextConfig.hotkeys.minimalMode = DEFAULT_CONFIG.hotkeys.minimalMode;
+  }
+  return nextConfig;
 }
 
 function mergeConfig(base, override) {
@@ -161,7 +171,7 @@ function registerHotkeys() {
   register(keys.opacityUp, () => changeOpacity(0.08));
   register(keys.cycleTheme, () => sendToRenderer('theme:cycle'));
   register(keys.privacyMode, () => sendToRenderer('privacy:toggle'));
-  register(keys.minimalMode, () => sendToRenderer('minimal:toggle'));
+  register(keys.minimalMode, toggleMinimalMode);
   register(keys.dockLeft, () => dockWindow('left'));
   register(keys.dockRight, () => dockWindow('right'));
   register(keys.quit, () => app.quit());
@@ -194,11 +204,18 @@ function dockWindow(side) {
 
 function applyMinimalLayout(enabled, rowCount) {
   if (!mainWindow) return;
+  if (!enabled && !minimalLayoutApplied) {
+    mainWindow.setMinimumSize(NORMAL_MIN_WIDTH, NORMAL_MIN_HEIGHT);
+    return;
+  }
+
   const bounds = mainWindow.getBounds();
   suppressBoundsPersist = true;
   try {
     if (enabled) {
-      normalWindowBounds = normalWindowBounds || bounds;
+      if (!normalWindowBounds && isNormalWindowBounds(bounds)) {
+        normalWindowBounds = bounds;
+      }
       const width = 304;
       const height = Math.max(30, Math.min(800, Number(rowCount || 1) * 28 + 2));
       mainWindow.setMinimumSize(260, 30);
@@ -208,18 +225,65 @@ function applyMinimalLayout(enabled, rowCount) {
         width,
         height
       });
-    } else if (normalWindowBounds) {
-      mainWindow.setMinimumSize(520, 180);
-      mainWindow.setBounds(normalWindowBounds);
-      normalWindowBounds = null;
+      minimalLayoutApplied = true;
     } else {
-      mainWindow.setMinimumSize(520, 180);
+      const restoreBounds = getNormalRestoreBounds(bounds);
+      mainWindow.setMinimumSize(NORMAL_MIN_WIDTH, NORMAL_MIN_HEIGHT);
+      mainWindow.setBounds(restoreBounds);
+      normalWindowBounds = null;
+      minimalLayoutApplied = false;
+      if (config && config.window) {
+        config.window.width = restoreBounds.width;
+        config.window.height = restoreBounds.height;
+        config.window.x = restoreBounds.x;
+        config.window.y = restoreBounds.y;
+        saveConfig();
+      }
     }
   } finally {
     setTimeout(() => {
       suppressBoundsPersist = false;
     }, 100);
   }
+}
+
+function isNormalWindowBounds(bounds) {
+  return Boolean(
+    bounds &&
+    Number(bounds.width) >= NORMAL_MIN_WIDTH &&
+    Number(bounds.height) >= NORMAL_MIN_HEIGHT
+  );
+}
+
+function getNormalRestoreBounds(currentBounds) {
+  if (isNormalWindowBounds(normalWindowBounds)) {
+    return normalWindowBounds;
+  }
+
+  const configuredBounds = {
+    x: Number.isFinite(config.window.x) ? config.window.x : currentBounds.x,
+    y: Number.isFinite(config.window.y) ? config.window.y : currentBounds.y,
+    width: Number(config.window.width),
+    height: Number(config.window.height)
+  };
+  if (isNormalWindowBounds(configuredBounds)) {
+    return configuredBounds;
+  }
+
+  return {
+    x: currentBounds.x,
+    y: currentBounds.y,
+    width: Math.max(NORMAL_MIN_WIDTH, DEFAULT_CONFIG.window.width),
+    height: Math.max(NORMAL_MIN_HEIGHT, DEFAULT_CONFIG.window.height)
+  };
+}
+
+function toggleMinimalMode() {
+  if (!config) return;
+  config.privacy.minimalMode = !config.privacy.minimalMode;
+  saveConfig();
+  applyMinimalLayout(config.privacy.minimalMode, config.watchlist.length || 1);
+  sendToRenderer('config:updated', config);
 }
 
 function sendToRenderer(channel, payload) {
@@ -594,6 +658,10 @@ app.whenReady().then(() => {
   ipcMain.handle('analysis:get', (_event, symbol) => readAnalysisReason(symbol));
   ipcMain.handle('window:minimize-hide', () => {
     if (mainWindow) mainWindow.hide();
+  });
+  ipcMain.handle('window:opacity-adjust', (_event, delta) => {
+    changeOpacity(Number(delta));
+    return config.window.opacity;
   });
   ipcMain.handle('window:minimal-layout', (_event, payload) => {
     applyMinimalLayout(Boolean(payload && payload.enabled), Number(payload && payload.rowCount));
