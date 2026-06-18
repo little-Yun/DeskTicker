@@ -217,14 +217,16 @@ function applyMinimalLayout(enabled, rowCount) {
         normalWindowBounds = bounds;
       }
       const width = 304;
-      const height = Math.max(30, Math.min(800, Number(rowCount || 1) * 28 + 2));
+      const height = Math.max(32, Math.min(800, Number(rowCount || 1) * 28 + 4));
       mainWindow.setMinimumSize(260, 30);
-      mainWindow.setBounds({
-        x: bounds.x,
-        y: bounds.y,
-        width,
-        height
-      });
+      if (bounds.width !== width || bounds.height !== height) {
+        mainWindow.setBounds({
+          x: bounds.x,
+          y: bounds.y,
+          width,
+          height
+        });
+      }
       minimalLayoutApplied = true;
     } else {
       const restoreBounds = getNormalRestoreBounds(bounds);

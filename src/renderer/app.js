@@ -11,11 +11,16 @@ const state = {
   refreshing: false,
   analysisSymbol: null,
   themeIndex: 0,
-  themes: ['', 'theme-international', 'theme-gray', 'theme-office']
+  themes: ['', 'theme-international', 'theme-gray', 'theme-office'],
+  minimalLayout: {
+    enabled: null,
+    rowCount: null
+  }
 };
 
 const appEl = document.getElementById('app');
 const statusText = document.getElementById('statusText');
+const tableWrap = document.querySelector('.table-wrap');
 const quoteRows = document.getElementById('quoteRows');
 const symbolInput = document.getElementById('symbolInput');
 const suggestionList = document.getElementById('suggestionList');
@@ -73,6 +78,13 @@ function scoreClass(score) {
 }
 
 function render() {
+  const minimalMode = Boolean(state.config.privacy.minimalMode);
+  const scrollTop = tableWrap ? tableWrap.scrollTop : 0;
+  const scrollLeft = tableWrap ? tableWrap.scrollLeft : 0;
+
+  appEl.classList.toggle('privacy', Boolean(state.config.privacy.hidePnL || state.config.privacy.hidePosition));
+  appEl.classList.toggle('minimal', minimalMode);
+
   const rows = state.config.watchlist.map(item => {
     const quote = state.quotes.get(item.symbol) || {};
     const name = item.alias || quote.name || item.name || item.symbol;
@@ -93,8 +105,10 @@ function render() {
     `;
   }).join('');
   quoteRows.innerHTML = rows || '<tr><td colspan="9" class="flat">暂无自选股，输入代码后添加。</td></tr>';
-  appEl.classList.toggle('privacy', Boolean(state.config.privacy.hidePnL || state.config.privacy.hidePosition));
-  appEl.classList.toggle('minimal', Boolean(state.config.privacy.minimalMode));
+  if (tableWrap) {
+    tableWrap.scrollTop = minimalMode ? 0 : scrollTop;
+    tableWrap.scrollLeft = minimalMode ? 0 : scrollLeft;
+  }
   opacityText.textContent = `透明度 ${Math.round(state.config.window.opacity * 100)}%`;
   refreshIntervalLabel.textContent = formatIntervalLabel(state.config.refreshIntervalMs);
   syncRefreshMenu();
@@ -114,10 +128,18 @@ function formatIntervalLabel(value) {
 }
 
 function applyMinimalLayout() {
-  window.yinpan.setMinimalLayout({
+  const payload = {
     enabled: Boolean(state.config.privacy.minimalMode),
     rowCount: state.config.watchlist.length || 1
-  });
+  };
+  if (
+    state.minimalLayout.enabled === payload.enabled &&
+    state.minimalLayout.rowCount === payload.rowCount
+  ) {
+    return;
+  }
+  state.minimalLayout = payload;
+  window.yinpan.setMinimalLayout(payload);
 }
 
 function escapeHtml(value) {

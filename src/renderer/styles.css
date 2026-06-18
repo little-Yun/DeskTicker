@@ -530,6 +530,7 @@ td:nth-child(9) {
 .minimal table {
   table-layout: auto;
   width: auto;
+  max-width: 100%;
 }
 
 .minimal thead {
