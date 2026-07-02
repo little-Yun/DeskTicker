@@ -123,6 +123,11 @@ button:hover {
   background: rgba(255, 255, 255, 0.12);
 }
 
+#aboutBtn {
+  min-width: 44px;
+  padding: 0 8px;
+}
+
 .toolbar {
   position: relative;
   z-index: 30;
@@ -575,6 +580,10 @@ td:nth-child(9) {
   overflow: hidden;
 }
 
+.about-modal {
+  width: min(560px, calc(100vw - 28px));
+}
+
 .modal-header {
   display: flex;
   align-items: center;
@@ -635,6 +644,27 @@ td:nth-child(9) {
 
 .analysis-content p {
   margin: 7px 0;
+}
+
+.about-content {
+  line-height: 1.8;
+}
+
+.about-content p {
+  margin: 0 0 12px;
+  white-space: normal;
+}
+
+.about-content p:last-child {
+  margin-bottom: 0;
+}
+
+.coffee-image {
+  display: block;
+  width: min(260px, 100%);
+  height: auto;
+  margin: 14px auto 0;
+  border-radius: 6px;
 }
 
 .analysis-content a {

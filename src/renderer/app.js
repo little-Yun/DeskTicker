@@ -73,6 +73,7 @@ const refreshHint = document.getElementById('refreshHint');
 const analysisModal = document.getElementById('analysisModal');
 const analysisSubtitle = document.getElementById('analysisSubtitle');
 const analysisContent = document.getElementById('analysisContent');
+const aboutModal = document.getElementById('aboutModal');
 
 function normalizeSymbol(input) {
   const raw = String(input || '').trim().toLowerCase();
@@ -442,6 +443,19 @@ function closeAnalysis() {
   analysisModal.hidden = true;
 }
 
+function showAbout() {
+  hideSuggestions();
+  closeRefreshMenu();
+  document.body.classList.add('modal-open');
+  aboutModal.hidden = false;
+  document.getElementById('aboutCloseBtn').focus();
+}
+
+function closeAbout() {
+  document.body.classList.remove('modal-open');
+  aboutModal.hidden = true;
+}
+
 async function adjustWindowOpacity(delta) {
   const opacity = await window.yinpan.adjustOpacity(delta);
   state.config.window.opacity = opacity;
@@ -624,11 +638,16 @@ function bindEvents() {
   });
   document.getElementById('themeBtn').addEventListener('click', cycleTheme);
   document.getElementById('minimalBtn').addEventListener('click', toggleMinimal);
+  document.getElementById('aboutBtn').addEventListener('click', showAbout);
   document.getElementById('hideBtn').addEventListener('click', () => window.yinpan.hideWindow());
   document.getElementById('closeBtn').addEventListener('click', () => window.yinpan.closeApp());
   document.getElementById('analysisCloseBtn').addEventListener('click', closeAnalysis);
+  document.getElementById('aboutCloseBtn').addEventListener('click', closeAbout);
   analysisModal.addEventListener('click', event => {
     if (event.target === analysisModal) closeAnalysis();
+  });
+  aboutModal.addEventListener('click', event => {
+    if (event.target === aboutModal) closeAbout();
   });
   document.addEventListener('keydown', event => {
     if (!analysisModal.hidden && event.ctrlKey && !event.altKey && !event.shiftKey) {
@@ -644,6 +663,7 @@ function bindEvents() {
       }
     }
     if (event.key === 'Escape' && !analysisModal.hidden) closeAnalysis();
+    if (event.key === 'Escape' && !aboutModal.hidden) closeAbout();
     if (event.key === 'Escape') closeRefreshMenu();
   });
   symbolInput.addEventListener('keydown', event => {
