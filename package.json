@@ -8,7 +8,7 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "package:win": "electron-packager . YinPan --platform=win32 --arch=x64 --overwrite --out=dist --ignore=\"^/dist$\" --ignore=\"^/node_modules/.cache$\""
+    "package:win": "electron-packager . YinPan --platform=win32 --arch=x64 --overwrite --out=dist --asar --prune=true --ignore=\"^/(dist|YinPan-win32-x64|outputs|scripts|\\.git|\\.idea)$\" --ignore=\"^/YinPan-win32-x64\\.zip$\" --ignore=\"^/package-lock\\.json$\" --ignore=\"^/(package-win|一键打包)\\.bat$\" --ignore=\"^/README\\.md$\" --ignore=\"^/node_modules/\\.cache$\" && node scripts/trim-package.js dist/YinPan-win32-x64"
   },
   "dependencies": {
     "electron-log": "4.4.8"
