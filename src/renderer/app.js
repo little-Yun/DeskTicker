@@ -11,7 +11,48 @@ const state = {
   refreshing: false,
   analysisSymbol: null,
   themeIndex: 0,
-  themes: ['', 'theme-international', 'theme-gray', 'theme-office'],
+  themes: [
+    {
+      mode: 'classic-cn',
+      className: '',
+      colors: {
+        upColor: '#ff4d4f',
+        downColor: '#1fbe72',
+        backgroundColor: '#10141c',
+        textColor: '#dce4f2'
+      }
+    },
+    {
+      mode: 'international',
+      className: 'theme-international',
+      colors: {
+        upColor: '#1fbe72',
+        downColor: '#ff4d4f',
+        backgroundColor: '#10141c',
+        textColor: '#dce4f2'
+      }
+    },
+    {
+      mode: 'gray',
+      className: 'theme-gray',
+      colors: {
+        upColor: '#545b66',
+        downColor: '#545b66',
+        backgroundColor: '#f5f6f8',
+        textColor: '#202631'
+      }
+    },
+    {
+      mode: 'office',
+      className: 'theme-office',
+      colors: {
+        upColor: '#d93025',
+        downColor: '#188038',
+        backgroundColor: '#fafcff',
+        textColor: '#1d2430'
+      }
+    }
+  ],
   minimalLayout: {
     enabled: null,
     rowCount: null
@@ -62,6 +103,12 @@ function formatRawNumber(value) {
   return String(value);
 }
 
+function formatChangeAmount(value, fallbackValue) {
+  if (value !== undefined && value !== null && String(value).trim() !== '') return String(value);
+  if (!Number.isFinite(Number(fallbackValue)) || Number(fallbackValue) === 0) return '--';
+  return Number(fallbackValue).toFixed(2);
+}
+
 function trendClass(value) {
   const number = Number(value);
   if (number > 0) return 'up';
@@ -95,7 +142,7 @@ function render() {
         <td class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</td>
         <td>${item.symbol.replace(/^(sh|sz|bj)/, '')}</td>
         <td class="${changeClass}">${formatRawNumber(quote.priceText ?? price)}</td>
-        <td class="${changeClass}">${formatNumber(quote.change)}</td>
+        <td class="${changeClass}">${formatChangeAmount(quote.changeText, quote.change)}</td>
         <td class="${changeClass}">${Number.isFinite(Number(quote.changePercent)) ? Number(quote.changePercent).toFixed(2) + '%' : '--'}</td>
         <td class="${scoreClass(quote.investmentScore)}">${quote.investmentScoreText || '--'}</td>
         <td><button class="analysis-btn" data-symbol="${item.symbol}" title="查看AI分析">AI分析</button></td>
@@ -517,11 +564,32 @@ function clearRowPress() {
   document.body.classList.remove('row-dragging');
 }
 
-function cycleTheme() {
-  state.themeIndex = (state.themeIndex + 1) % state.themes.length;
-  document.body.classList.remove(...state.themes.filter(Boolean));
-  const next = state.themes[state.themeIndex];
-  if (next) document.body.classList.add(next);
+function themeClassNames() {
+  return state.themes.map(theme => theme.className).filter(Boolean);
+}
+
+function getThemeByMode(mode) {
+  return state.themes.find(theme => theme.mode === mode) || state.themes[0];
+}
+
+function applyTheme(theme) {
+  const nextTheme = theme || getThemeByMode(state.config?.theme?.mode);
+  state.themeIndex = state.themes.indexOf(nextTheme);
+  if (state.themeIndex < 0) state.themeIndex = 0;
+  document.body.classList.remove(...themeClassNames());
+  if (nextTheme.className) document.body.classList.add(nextTheme.className);
+}
+
+async function cycleTheme() {
+  const currentIndex = state.themeIndex >= 0 ? state.themeIndex : 0;
+  const nextTheme = state.themes[(currentIndex + 1) % state.themes.length];
+  state.config.theme = {
+    ...(state.config.theme || {}),
+    mode: nextTheme.mode,
+    ...nextTheme.colors
+  };
+  applyTheme(nextTheme);
+  await saveConfig();
 }
 
 async function togglePrivacy() {
@@ -633,6 +701,7 @@ function bindEvents() {
   window.yinpan.onToggleMinimal(toggleMinimal);
   window.yinpan.onConfigUpdated(config => {
     state.config = config;
+    applyTheme();
     render();
   });
   window.yinpan.onOpacity(opacity => {
@@ -643,6 +712,7 @@ function bindEvents() {
 
 async function init() {
   state.config = await window.yinpan.getConfig();
+  applyTheme();
   bindEvents();
   render();
   scheduleRefresh();

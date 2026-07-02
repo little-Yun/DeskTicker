@@ -397,6 +397,7 @@ function parseTencentQuotes(body) {
     const high = toNumber(fields[33]);
     const low = toNumber(fields[34]);
     const change = price && previousClose ? price - previousClose : toNumber(fields[31]);
+    const changeText = fields[31] || formatMetric(change, Math.max(decimalPlaces(fields[3]), decimalPlaces(fields[4]), 2));
     const changePercent = price && previousClose ? change / previousClose * 100 : toNumber(fields[32]);
     const updatedAt = formatQuoteTime(fields[30]);
     const investmentScore = calculateInvestmentScore({
@@ -419,6 +420,7 @@ function parseTencentQuotes(body) {
       high,
       low,
       change,
+      changeText,
       changePercent,
       amount,
       volume,
@@ -602,6 +604,11 @@ function scoreToStance(score) {
 
 function formatMetric(value, digits = 2) {
   return Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : '--';
+}
+
+function decimalPlaces(value) {
+  const match = String(value || '').match(/\.(\d+)/);
+  return match ? match[1].length : 0;
 }
 
 function formatSigned(value) {
