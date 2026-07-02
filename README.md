@@ -27,35 +27,11 @@
 | `Ctrl + Alt + Right` | 贴到屏幕右下 |
 | `Ctrl + Alt + Q` | 退出 |
 
-## 开发
-
-```bash
-npm install
-npm start
-```
-
-如果 Electron 二进制下载较慢，可以使用镜像：
-
-```bash
-set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
-npm install
-```
-
-## 打包 Windows
-
-```bash
-npm run package:win
-```
-
-打包后运行：
-
-```text
-dist/YinPan-win32-x64/YinPan.exe
-```
-
 ## 说明
 
 - 行情数据使用腾讯公开行情文本接口封装。
 - 本工具只做行情展示和个人持仓记录，不提供交易、荐股或收益承诺。
 - 如果行情接口临时不可用，界面会保留上一笔数据并显示“行情延迟”。
+
+## 求Start (^_^)
 
