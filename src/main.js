@@ -47,12 +47,37 @@ const DEFAULT_CONFIG = {
     quit: 'Control+Alt+Q'
   }
 };
+const REMOTE_API_TIMEOUT_MS = 10000;
 
 let mainWindow;
 let config;
 let normalWindowBounds;
 let minimalLayoutApplied = false;
 let suppressBoundsPersist = false;
+
+function runtimeDirPath() {
+  return app.isPackaged ? path.dirname(process.execPath) : app.getAppPath();
+}
+
+function logDirPath() {
+  return path.join(runtimeDirPath(), 'log');
+}
+
+function appLogPath() {
+  return path.join(logDirPath(), 'app.log');
+}
+
+function configureLogging() {
+  try {
+    fs.mkdirSync(logDirPath(), { recursive: true });
+    log.transports.file.resolvePath = appLogPath;
+    log.transports.file.level = 'info';
+    log.catchErrors({ showDialog: false });
+    log.info(`Log file initialized: ${appLogPath()}`);
+  } catch (error) {
+    console.error('Failed to initialize log file', error);
+  }
+}
 
 function configPath() {
   return path.join(app.getPath('userData'), CONFIG_FILE);
@@ -304,52 +329,155 @@ function normalizeSymbol(input) {
   return null;
 }
 
-function fetchQuotes(symbols) {
+function serializeError(error) {
+  if (!error) return {};
+  return {
+    name: error.name,
+    message: error.message,
+    code: error.code,
+    stack: error.stack
+  };
+}
+
+function bodyPreview(body) {
+  return String(body || '').slice(0, 1000);
+}
+
+function logRemoteApiError(context, error) {
+  log.error(JSON.stringify({
+    type: 'remote-api-error',
+    time: new Date().toISOString(),
+    ...context,
+    error: serializeError(error)
+  }));
+}
+
+function logRemoteApiWarning(context) {
+  log.warn(JSON.stringify({
+    type: 'remote-api-warning',
+    time: new Date().toISOString(),
+    ...context
+  }));
+}
+
+function fetchRemoteText(url, context) {
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+    let settled = false;
+
+    function finishWithError(error, extra = {}) {
+      if (settled) return;
+      settled = true;
+      logRemoteApiError({
+        ...context,
+        url,
+        durationMs: Date.now() - startedAt,
+        ...extra
+      }, error);
+      reject(error);
+    }
+
+    const request = https.get(url, {
+      headers: {
+        'Referer': 'https://gu.qq.com/',
+        'User-Agent': 'Mozilla/5.0 YinPan/0.1'
+      }
+    }, response => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', chunk => {
+        body += chunk;
+      });
+      response.on('end', () => {
+        if (settled) return;
+        const statusCode = response.statusCode || 0;
+        const meta = {
+          ...context,
+          url,
+          statusCode,
+          durationMs: Date.now() - startedAt
+        };
+
+        if (statusCode < 200 || statusCode >= 300) {
+          finishWithError(new Error(`Remote API returned HTTP ${statusCode}`), {
+            statusCode,
+            bodyPreview: bodyPreview(body)
+          });
+          return;
+        }
+
+        settled = true;
+        resolve({ body, meta });
+      });
+      response.on('error', finishWithError);
+    });
+
+    request.setTimeout(REMOTE_API_TIMEOUT_MS, () => {
+      request.destroy(new Error(`Remote API request timed out after ${REMOTE_API_TIMEOUT_MS}ms`));
+    });
+    request.on('error', finishWithError);
+  });
+}
+
+async function fetchQuotes(symbols) {
   const validSymbols = [...new Set(symbols.map(normalizeSymbol).filter(Boolean))];
   if (validSymbols.length === 0) return Promise.resolve([]);
 
   const url = `https://web.sqt.gtimg.cn/utf8/q=${validSymbols.join(',')}&r=${Date.now()}`;
-  return new Promise((resolve, reject) => {
-    https.get(url, {
-      headers: {
-        'Referer': 'https://gu.qq.com/',
-        'User-Agent': 'Mozilla/5.0 YinPan/0.1'
-      }
-    }, response => {
-      let body = '';
-      response.setEncoding('utf8');
-      response.on('data', chunk => {
-        body += chunk;
-      });
-      response.on('end', () => {
-        resolve(parseTencentQuotes(body));
-      });
-    }).on('error', reject);
+  const { body, meta } = await fetchRemoteText(url, {
+    endpoint: 'quotes',
+    symbols: validSymbols
   });
+
+  try {
+    const quotes = parseTencentQuotes(body);
+    if (quotes.length === 0) {
+      throw new Error('Remote API returned no quote data');
+    }
+
+    const returnedSymbols = new Set(quotes.map(quote => quote.symbol));
+    const missingSymbols = validSymbols.filter(symbol => !returnedSymbols.has(symbol));
+    if (missingSymbols.length > 0) {
+      logRemoteApiWarning({
+        ...meta,
+        reason: 'partial-quote-response',
+        symbols: validSymbols,
+        missingSymbols,
+        bodyPreview: bodyPreview(body)
+      });
+    }
+
+    return quotes;
+  } catch (error) {
+    logRemoteApiError({
+      ...meta,
+      symbols: validSymbols,
+      bodyPreview: bodyPreview(body)
+    }, error);
+    throw error;
+  }
 }
 
-function fetchStockSuggestions(keyword) {
+async function fetchStockSuggestions(keyword) {
   const query = String(keyword || '').trim();
   if (!query) return Promise.resolve([]);
 
   const url = `https://smartbox.gtimg.cn/s3/?q=${encodeURIComponent(query)}&t=all&r=${Date.now()}`;
-  return new Promise((resolve, reject) => {
-    https.get(url, {
-      headers: {
-        'Referer': 'https://gu.qq.com/',
-        'User-Agent': 'Mozilla/5.0 YinPan/0.1'
-      }
-    }, response => {
-      let body = '';
-      response.setEncoding('utf8');
-      response.on('data', chunk => {
-        body += chunk;
-      });
-      response.on('end', () => {
-        resolve(parseStockSuggestions(body));
-      });
-    }).on('error', reject);
+  const { body, meta } = await fetchRemoteText(url, {
+    endpoint: 'suggestions',
+    keyword: query
   });
+
+  try {
+    return parseStockSuggestions(body);
+  } catch (error) {
+    logRemoteApiError({
+      ...meta,
+      keyword: query,
+      bodyPreview: bodyPreview(body)
+    }, error);
+    throw error;
+  }
 }
 
 function parseStockSuggestions(body) {
@@ -647,6 +775,7 @@ function formatQuoteTime(value) {
 }
 
 app.whenReady().then(() => {
+  configureLogging();
   config = readConfig();
   createWindow();
   registerHotkeys();
