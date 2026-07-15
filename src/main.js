@@ -9,6 +9,9 @@ const NORMAL_MIN_WIDTH = 520;
 const NORMAL_MIN_HEIGHT = 180;
 const DEFAULT_CONFIG = {
   refreshIntervalMs: 60000,
+  table: {
+    visibleColumns: ['name', 'code', 'price', 'change', 'changePercent', 'score', 'analysis', 'time']
+  },
   watchlist: [
     { symbol: 'sh000001', name: '上证指数' },
     { symbol: 'sz399001', name: '深证成指' },
@@ -227,7 +230,7 @@ function dockWindow(side) {
   persistWindowBounds();
 }
 
-function applyMinimalLayout(enabled, rowCount) {
+function applyMinimalLayout(enabled, rowCount, minimalWidth, minimalRowHeight) {
   if (!mainWindow) return;
   if (!enabled && !minimalLayoutApplied) {
     mainWindow.setMinimumSize(NORMAL_MIN_WIDTH, NORMAL_MIN_HEIGHT);
@@ -241,9 +244,12 @@ function applyMinimalLayout(enabled, rowCount) {
       if (!normalWindowBounds && isNormalWindowBounds(bounds)) {
         normalWindowBounds = bounds;
       }
-      const width = 304;
-      const height = Math.max(32, Math.min(800, Number(rowCount || 1) * 28 + 4));
-      mainWindow.setMinimumSize(260, 30);
+      const requestedWidth = Number(minimalWidth);
+      const requestedRowHeight = Number(minimalRowHeight);
+      const width = Math.max(120, Math.min(360, Number.isFinite(requestedWidth) ? requestedWidth : 304));
+      const rowHeight = Math.max(20, Math.min(32, Number.isFinite(requestedRowHeight) ? requestedRowHeight : 28));
+      const height = Math.max(28, Math.min(800, Number(rowCount || 1) * rowHeight + 2));
+      mainWindow.setMinimumSize(120, 28);
       if (bounds.width !== width || bounds.height !== height) {
         mainWindow.setBounds({
           x: bounds.x,
@@ -802,7 +808,12 @@ app.whenReady().then(() => {
     return config.window.opacity;
   });
   ipcMain.handle('window:minimal-layout', (_event, payload) => {
-    applyMinimalLayout(Boolean(payload && payload.enabled), Number(payload && payload.rowCount));
+    applyMinimalLayout(
+      Boolean(payload && payload.enabled),
+      Number(payload && payload.rowCount),
+      Number(payload && payload.width),
+      Number(payload && payload.rowHeight)
+    );
   });
   ipcMain.handle('window:close', () => app.quit());
 

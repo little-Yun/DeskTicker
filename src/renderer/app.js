@@ -10,6 +10,11 @@ const state = {
   suppressNextRowClick: false,
   refreshing: false,
   analysisSymbol: null,
+  draftVisibleColumns: null,
+  columnSelection: {
+    hidden: new Set(),
+    visible: new Set()
+  },
   themeIndex: 0,
   themes: [
     {
@@ -59,12 +64,40 @@ const state = {
   }
 };
 
+const TABLE_COLUMNS = [
+  { id: 'name', label: '名称', className: 'col-name' },
+  { id: 'code', label: '代码', className: 'col-code' },
+  { id: 'price', label: '现价', className: 'col-price' },
+  { id: 'change', label: '涨跌', className: 'col-change' },
+  { id: 'changePercent', label: '涨幅', className: 'col-change-percent' },
+  { id: 'score', label: '评分', className: 'col-score' },
+  { id: 'analysis', label: 'AI分析', className: 'col-analysis' },
+  { id: 'time', label: '时间', className: 'col-time' }
+];
+const DEFAULT_VISIBLE_COLUMNS = TABLE_COLUMNS.map(column => column.id);
+const TABLE_COLUMN_IDS = new Set(DEFAULT_VISIBLE_COLUMNS);
+const MINIMAL_HIDDEN_COLUMNS = new Set(['code', 'analysis', 'time']);
+const MINIMAL_COLUMN_WIDTHS = {
+  name: 86,
+  price: 58,
+  change: 58,
+  changePercent: 62,
+  score: 38
+};
+const MINIMAL_ROW_HEIGHT = 24;
+const MINIMAL_HORIZONTAL_PADDING = 8;
+
 const appEl = document.getElementById('app');
 const statusText = document.getElementById('statusText');
 const tableWrap = document.querySelector('.table-wrap');
+const quoteHeader = document.getElementById('quoteHeader');
 const quoteRows = document.getElementById('quoteRows');
 const symbolInput = document.getElementById('symbolInput');
 const suggestionList = document.getElementById('suggestionList');
+const columnDisplayBtn = document.getElementById('columnDisplayBtn');
+const columnModal = document.getElementById('columnModal');
+const hiddenColumnList = document.getElementById('hiddenColumnList');
+const visibleColumnList = document.getElementById('visibleColumnList');
 const refreshIntervalButton = document.getElementById('refreshIntervalButton');
 const refreshIntervalLabel = document.getElementById('refreshIntervalLabel');
 const refreshIntervalMenu = document.getElementById('refreshIntervalMenu');
@@ -125,34 +158,97 @@ function scoreClass(score) {
   return 'score-risk';
 }
 
+function normalizeVisibleColumns(columns, fallback = DEFAULT_VISIBLE_COLUMNS) {
+  if (!Array.isArray(columns)) return [...fallback];
+  const seen = new Set();
+  const normalized = [];
+  for (const column of columns) {
+    if (!TABLE_COLUMN_IDS.has(column) || seen.has(column)) continue;
+    seen.add(column);
+    normalized.push(column);
+  }
+  return normalized;
+}
+
+function getVisibleColumnIds() {
+  return normalizeVisibleColumns(state.config?.table?.visibleColumns);
+}
+
+function getDraftVisibleColumnIds() {
+  return normalizeVisibleColumns(state.draftVisibleColumns, []);
+}
+
+function getVisibleColumns() {
+  const visible = new Set(getVisibleColumnIds());
+  return TABLE_COLUMNS.filter(column => visible.has(column.id));
+}
+
+function getMinimalVisibleColumnIds() {
+  return getVisibleColumnIds().filter(id => !MINIMAL_HIDDEN_COLUMNS.has(id));
+}
+
+function getMinimalLayoutWidth() {
+  const visibleColumns = getMinimalVisibleColumnIds();
+  const contentWidth = visibleColumns.reduce((sum, id) => sum + (MINIMAL_COLUMN_WIDTHS[id] || 48), 0);
+  return Math.max(120, Math.min(360, contentWidth + MINIMAL_HORIZONTAL_PADDING));
+}
+
+function columnById(id) {
+  return TABLE_COLUMNS.find(column => column.id === id);
+}
+
+function renderQuoteCell(column, item, quote, name, changeClass) {
+  if (column.id === 'name') {
+    return `<td class="${column.className}" title="${escapeHtml(name)}">${escapeHtml(name)}</td>`;
+  }
+  if (column.id === 'code') {
+    return `<td class="${column.className}">${item.symbol.replace(/^(sh|sz|bj)/, '')}</td>`;
+  }
+  if (column.id === 'price') {
+    const price = quote.price || 0;
+    return `<td class="${column.className} ${changeClass}">${formatRawNumber(quote.priceText ?? price)}</td>`;
+  }
+  if (column.id === 'change') {
+    return `<td class="${column.className} ${changeClass}">${formatChangeAmount(quote.changeText, quote.change)}</td>`;
+  }
+  if (column.id === 'changePercent') {
+    const value = Number.isFinite(Number(quote.changePercent)) ? Number(quote.changePercent).toFixed(2) + '%' : '--';
+    return `<td class="${column.className} ${changeClass}">${value}</td>`;
+  }
+  if (column.id === 'score') {
+    return `<td class="${column.className} ${scoreClass(quote.investmentScore)}">${quote.investmentScoreText || '--'}</td>`;
+  }
+  if (column.id === 'analysis') {
+    return `<td class="${column.className}"><button class="analysis-btn" data-symbol="${item.symbol}" title="查看AI分析">AI分析</button></td>`;
+  }
+  if (column.id === 'time') {
+    return `<td class="${column.className}">${quote.updatedAt || '--'}</td>`;
+  }
+  return '';
+}
+
 function render() {
   const minimalMode = Boolean(state.config.privacy.minimalMode);
   const scrollTop = tableWrap ? tableWrap.scrollTop : 0;
   const scrollLeft = tableWrap ? tableWrap.scrollLeft : 0;
+  const visibleColumns = getVisibleColumns();
 
   appEl.classList.toggle('privacy', Boolean(state.config.privacy.hidePnL || state.config.privacy.hidePosition));
   appEl.classList.toggle('minimal', minimalMode);
+  quoteHeader.innerHTML = `${visibleColumns.map(column => `<th class="${column.className}">${column.label}</th>`).join('')}<th class="col-action"></th>`;
 
   const rows = state.config.watchlist.map(item => {
     const quote = state.quotes.get(item.symbol) || {};
     const name = item.alias || quote.name || item.name || item.symbol;
-    const price = quote.price || 0;
     const changeClass = trendClass(quote.change);
     return `
       <tr data-symbol="${item.symbol}" class="${state.rowDrag && state.rowDrag.symbol === item.symbol && state.rowDrag.active ? 'dragging-row' : ''}">
-        <td class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</td>
-        <td>${item.symbol.replace(/^(sh|sz|bj)/, '')}</td>
-        <td class="${changeClass}">${formatRawNumber(quote.priceText ?? price)}</td>
-        <td class="${changeClass}">${formatChangeAmount(quote.changeText, quote.change)}</td>
-        <td class="${changeClass}">${Number.isFinite(Number(quote.changePercent)) ? Number(quote.changePercent).toFixed(2) + '%' : '--'}</td>
-        <td class="${scoreClass(quote.investmentScore)}">${quote.investmentScoreText || '--'}</td>
-        <td><button class="analysis-btn" data-symbol="${item.symbol}" title="查看AI分析">AI分析</button></td>
-        <td>${quote.updatedAt || '--'}</td>
-        <td><button class="remove" data-symbol="${item.symbol}" title="删除">×</button></td>
+        ${visibleColumns.map(column => renderQuoteCell(column, item, quote, name, changeClass)).join('')}
+        <td class="col-action"><button class="remove" data-symbol="${item.symbol}" title="删除">×</button></td>
       </tr>
     `;
   }).join('');
-  quoteRows.innerHTML = rows || '<tr><td colspan="9" class="flat">暂无自选股，输入代码后添加。</td></tr>';
+  quoteRows.innerHTML = rows || `<tr><td colspan="${visibleColumns.length + 1}" class="flat">暂无自选股，输入代码后添加。</td></tr>`;
   if (tableWrap) {
     tableWrap.scrollTop = minimalMode ? 0 : scrollTop;
     tableWrap.scrollLeft = minimalMode ? 0 : scrollLeft;
@@ -178,11 +274,15 @@ function formatIntervalLabel(value) {
 function applyMinimalLayout() {
   const payload = {
     enabled: Boolean(state.config.privacy.minimalMode),
-    rowCount: state.config.watchlist.length || 1
+    rowCount: state.config.watchlist.length || 1,
+    width: getMinimalLayoutWidth(),
+    rowHeight: MINIMAL_ROW_HEIGHT
   };
   if (
     state.minimalLayout.enabled === payload.enabled &&
-    state.minimalLayout.rowCount === payload.rowCount
+    state.minimalLayout.rowCount === payload.rowCount &&
+    state.minimalLayout.width === payload.width &&
+    state.minimalLayout.rowHeight === payload.rowHeight
   ) {
     return;
   }
@@ -416,6 +516,109 @@ function closeRefreshMenu() {
   refreshIntervalButton.setAttribute('aria-expanded', 'false');
 }
 
+function getHiddenColumnIds() {
+  const visible = new Set(getDraftVisibleColumnIds());
+  return TABLE_COLUMNS.filter(column => !visible.has(column.id)).map(column => column.id);
+}
+
+function clearColumnSelection() {
+  state.columnSelection.hidden.clear();
+  state.columnSelection.visible.clear();
+}
+
+function renderColumnPicker() {
+  const visibleIds = getDraftVisibleColumnIds();
+  const hiddenIds = getHiddenColumnIds();
+  hiddenColumnList.innerHTML = renderColumnOptions(hiddenIds, 'hidden');
+  visibleColumnList.innerHTML = renderColumnOptions(visibleIds, 'visible');
+  document.getElementById('showColumnBtn').disabled = state.columnSelection.hidden.size === 0;
+  document.getElementById('hideColumnBtn').disabled = state.columnSelection.visible.size === 0;
+}
+
+function renderColumnOptions(columnIds, listName) {
+  if (columnIds.length === 0) {
+    return '<div class="column-empty">暂无列</div>';
+  }
+  return columnIds.map(id => {
+    const column = columnById(id);
+    const selected = state.columnSelection[listName].has(id);
+    return `
+      <button class="column-option" type="button" data-list="${listName}" data-column="${id}" aria-selected="${String(selected)}">
+        <span class="column-check" aria-hidden="true"></span>
+        <span>${escapeHtml(column.label)}</span>
+      </button>
+    `;
+  }).join('');
+}
+
+function showColumnModal() {
+  hideSuggestions();
+  closeRefreshMenu();
+  state.draftVisibleColumns = getVisibleColumnIds();
+  clearColumnSelection();
+  renderColumnPicker();
+  document.body.classList.add('modal-open');
+  columnModal.hidden = false;
+  document.getElementById('columnCloseBtn').focus();
+}
+
+function closeColumnModal() {
+  state.draftVisibleColumns = null;
+  clearColumnSelection();
+  document.body.classList.remove('modal-open');
+  columnModal.hidden = true;
+}
+
+function toggleColumnSelection(button) {
+  const listName = button.dataset.list;
+  const columnId = button.dataset.column;
+  if (!state.columnSelection[listName] || !TABLE_COLUMN_IDS.has(columnId)) return;
+  const selected = state.columnSelection[listName];
+  if (selected.has(columnId)) {
+    selected.delete(columnId);
+  } else {
+    selected.add(columnId);
+  }
+  renderColumnPicker();
+}
+
+function updateDraftVisibleColumns(nextVisibleColumns) {
+  state.draftVisibleColumns = normalizeVisibleColumns(nextVisibleColumns, []);
+  renderColumnPicker();
+}
+
+async function saveVisibleColumns(nextVisibleColumns) {
+  state.config.table = {
+    ...(state.config.table || {}),
+    visibleColumns: normalizeVisibleColumns(nextVisibleColumns, [])
+  };
+  await saveConfig();
+  render();
+}
+
+function showSelectedColumns() {
+  if (state.columnSelection.hidden.size === 0) return;
+  const nextVisible = new Set(getDraftVisibleColumnIds());
+  state.columnSelection.hidden.forEach(id => nextVisible.add(id));
+  clearColumnSelection();
+  updateDraftVisibleColumns(DEFAULT_VISIBLE_COLUMNS.filter(id => nextVisible.has(id)));
+}
+
+function hideSelectedColumns() {
+  if (state.columnSelection.visible.size === 0) return;
+  const hidden = state.columnSelection.visible;
+  const nextVisible = getDraftVisibleColumnIds().filter(id => !hidden.has(id));
+  clearColumnSelection();
+  updateDraftVisibleColumns(nextVisible);
+}
+
+async function saveColumnModal() {
+  const nextVisible = new Set(getDraftVisibleColumnIds());
+  state.columnSelection.hidden.forEach(id => nextVisible.add(id));
+  await saveVisibleColumns(DEFAULT_VISIBLE_COLUMNS.filter(id => nextVisible.has(id)));
+  closeColumnModal();
+}
+
 async function showAnalysis(symbol) {
   state.analysisSymbol = symbol;
   const quote = state.quotes.get(symbol) || {};
@@ -636,6 +839,23 @@ function bindEvents() {
     closeRefreshMenu();
     changeRefreshInterval();
   });
+  columnDisplayBtn.addEventListener('click', showColumnModal);
+  document.getElementById('columnCloseBtn').addEventListener('click', closeColumnModal);
+  document.getElementById('columnCancelBtn').addEventListener('click', closeColumnModal);
+  document.getElementById('columnSaveBtn').addEventListener('click', saveColumnModal);
+  document.getElementById('showColumnBtn').addEventListener('click', showSelectedColumns);
+  document.getElementById('hideColumnBtn').addEventListener('click', hideSelectedColumns);
+  columnModal.addEventListener('click', event => {
+    if (event.target === columnModal) closeColumnModal();
+  });
+  hiddenColumnList.addEventListener('click', event => {
+    const option = event.target.closest('.column-option');
+    if (option) toggleColumnSelection(option);
+  });
+  visibleColumnList.addEventListener('click', event => {
+    const option = event.target.closest('.column-option');
+    if (option) toggleColumnSelection(option);
+  });
   document.getElementById('themeBtn').addEventListener('click', cycleTheme);
   document.getElementById('minimalBtn').addEventListener('click', toggleMinimal);
   document.getElementById('aboutBtn').addEventListener('click', showAbout);
@@ -663,6 +883,7 @@ function bindEvents() {
       }
     }
     if (event.key === 'Escape' && !analysisModal.hidden) closeAnalysis();
+    if (event.key === 'Escape' && !columnModal.hidden) closeColumnModal();
     if (event.key === 'Escape' && !aboutModal.hidden) closeAbout();
     if (event.key === 'Escape') closeRefreshMenu();
   });

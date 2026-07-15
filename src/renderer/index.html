@@ -31,6 +31,7 @@
           <div id="suggestionList" class="suggestion-list" hidden></div>
         </div>
         <button id="addBtn">添加</button>
+        <button id="columnDisplayBtn" class="column-display-button" type="button">显示</button>
         <div class="refresh-select">
           <button id="refreshIntervalButton" class="refresh-select-button" type="button" title="数据更新时间" aria-haspopup="listbox" aria-expanded="false">
             <span id="refreshIntervalLabel">1分钟</span>
@@ -49,17 +50,7 @@
       <section class="table-wrap">
         <table>
           <thead>
-            <tr>
-              <th>名称</th>
-              <th>代码</th>
-              <th>现价</th>
-              <th>涨跌</th>
-              <th>涨幅</th>
-              <th>评分</th>
-              <th>AI分析</th>
-              <th>时间</th>
-              <th></th>
-            </tr>
+            <tr id="quoteHeader"></tr>
           </thead>
           <tbody id="quoteRows"></tbody>
         </table>
@@ -81,6 +72,36 @@
           <button id="analysisCloseBtn" title="关闭">×</button>
         </header>
         <div id="analysisContent" class="analysis-content"></div>
+      </section>
+    </div>
+
+    <div id="columnModal" class="modal-backdrop" hidden>
+      <section class="analysis-modal column-modal" role="dialog" aria-modal="true" aria-labelledby="columnTitle">
+        <header class="modal-header">
+          <div>
+            <strong id="columnTitle">显示列</strong>
+            <span class="column-subtitle">选择列后用箭头调整是否显示</span>
+          </div>
+          <button id="columnCloseBtn" title="关闭">×</button>
+        </header>
+        <div class="column-picker">
+          <section class="column-list-panel">
+            <strong>未显示</strong>
+            <div id="hiddenColumnList" class="column-list"></div>
+          </section>
+          <div class="column-transfer-actions" aria-label="显示列操作">
+            <button id="showColumnBtn" type="button" title="显示选中列">&gt;</button>
+            <button id="hideColumnBtn" type="button" title="隐藏选中列">&lt;</button>
+          </div>
+          <section class="column-list-panel">
+            <strong>已显示</strong>
+            <div id="visibleColumnList" class="column-list"></div>
+          </section>
+        </div>
+        <footer class="column-modal-actions">
+          <button id="columnCancelBtn" type="button">取消</button>
+          <button id="columnSaveBtn" class="primary-action" type="button">保存</button>
+        </footer>
       </section>
     </div>
 
